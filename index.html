@@ -205,38 +205,38 @@ const firebaseConfig = {
     const mainContent = document.getElementById('mainContent');
     const loginError = document.getElementById('loginError');
 
-    // Google 登入功能與白名單驗證
+// 1. Google 登入功能 (改用「整頁跳轉」，完美避開彈出視窗被阻擋的問題)
     function loginWithGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider)
-            .then((result) => {
-                const userEmail = result.user.email;
-                if (!allowedEmails.includes(userEmail)) {
-                    loginError.innerText = `⛔ 登入失敗：您的信箱 (${userEmail}) 不在授權名單內！`;
-                    loginError.style.display = "block";
-                    auth.signOut(); // 強制登出不在白名單的帳號
-                }
-            })
-            .catch((error) => {
-                loginError.innerText = "登入時發生錯誤，請稍後再試。";
-                loginError.style.display = "block";
-            });
+        auth.signInWithRedirect(provider);
     }
 
-    function logout() {
-        auth.signOut().then(() => {
-            window.location.reload();
-        });
-    }
-
-    // 監聽登入狀態切換畫面
+    // 2. 監聽登入狀態切換畫面與白名單驗證 (將驗證邏輯集中處理)
     auth.onAuthStateChanged((user) => {
-        if (user && allowedEmails.includes(user.email)) {
-            document.getElementById('userGreeting').innerText = `目前使用者：${user.email} (已安全連線)`;
-            loginScreen.style.display = "none";
-            mainContent.style.display = "block";
-            initializeDatabase();
+        const loginError = document.getElementById('loginError');
+        const loginScreen = document.getElementById('loginScreen');
+        const mainContent = document.getElementById('mainContent');
+
+        if (user) {
+            // 檢查是否在白名單內
+            if (allowedEmails.includes(user.email)) {
+                // 白名單核准：顯示主系統
+                document.getElementById('userGreeting').innerText = `目前使用者：${user.email} (已安全連線)`;
+                loginError.style.display = "none";
+                loginScreen.style.display = "none";
+                mainContent.style.display = "block";
+                initializeDatabase();
+            } else {
+                // 不在白名單內：顯示錯誤並強制登出
+                loginError.innerText = `⛔ 登入失敗：您的信箱 (${user.email}) 不在授權名單內！`;
+                loginError.style.display = "block";
+                auth.signOut();
+                
+                loginScreen.style.display = "block";
+                mainContent.style.display = "none";
+            }
         } else {
+            // 未登入狀態：顯示登入畫面
             loginScreen.style.display = "block";
             mainContent.style.display = "none";
         }
