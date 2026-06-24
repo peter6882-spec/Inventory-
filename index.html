@@ -29,7 +29,7 @@
 
 <div class="container">
     <h1>🍕 蔡叔叔比薩屋 - 雙溫層庫存管理</h1>
-    <div class="subtitle">※ 資料自動儲存於瀏覽器本地，不會遺失。</div>
+    <div class="subtitle">※ 資料自動儲存於瀏覽器本地。</div>
 
     <div class="alert-box" id="alertBox">
         <strong style="color: #c62828;">⚠️ 叫貨提醒：</strong> 以下大倉庫存過低，請安排叫貨！
@@ -63,7 +63,7 @@
 </div>
 
 <script>
-    const inventoryData = [
+    const initialData = [
         { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
         { id: 2, category: "肉類", name: "牛絞肉 (熟/800g包)", freezerStock: 4, chillerStock: 1, threshold: 5, unit: "包" },
         { id: 3, category: "海鮮", name: "蝦仁 (熟/800g包)", freezerStock: 8, chillerStock: 3, threshold: 4, unit: "包" },
@@ -73,6 +73,7 @@
         { id: 7, category: "臘腸", name: "小臘腸", freezerStock: 5, chillerStock: 2, threshold: 4, unit: "袋" },
         { id: 8, category: "薯條起司", name: "薯條", freezerStock: 3, chillerStock: 1, threshold: 5, unit: "袋" },
         { id: 9, category: "薯條起司", name: "莫扎瑞拉", freezerStock: 8, chillerStock: 2, threshold: 4, unit: "包" },
+        { id: 62, category: "薯條起司", name: "起司", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
         { id: 10, category: "蔬菜", name: "番茄", freezerStock: 20, chillerStock: 5, threshold: 15, unit: "顆" },
         { id: 11, category: "蔬菜", name: "洋蔥", freezerStock: 15, chillerStock: 4, threshold: 10, unit: "顆" },
         { id: 12, category: "蔬菜", name: "青椒", freezerStock: 5, chillerStock: 2, threshold: 6, unit: "條" },
@@ -89,8 +90,9 @@
         { id: 23, category: "粉", name: "雞肉裹粉P100", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
         { id: 24, category: "粉", name: "雞肉裹粉Q50", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
         { id: 25, category: "粉", name: "雞肉裹粉R0", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
-        { id: 26, category: "醬料", name: "番茄醬5kg", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "袋" },
-        { id: 27, category: "醬料", name: "番茄醬", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "瓶" },
+        // 已更新品項
+        { id: 26, category: "醬料", name: "番茄醬袋裝", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "袋" },
+        { id: 27, category: "醬料", name: "番茄醬瓶裝", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "瓶" },
         { id: 28, category: "醬料", name: "Tabasco", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "瓶" },
         { id: 29, category: "醬料", name: "BB辣椒醬", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "瓶" },
         { id: 30, category: "外帶醬料", name: "外帶番茄醬", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },
@@ -116,7 +118,7 @@
         { id: 50, category: "衛生用品", name: "折疊紙巾", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
         { id: 51, category: "衛生用品", name: "捲筒衛生紙", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
         { id: 52, category: "衛生用品", name: "濕紙巾", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
-        { id: 53, category: "衛生用品", name: "廚房手套M", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },
+        { id: 53, category: "衛生用品", name: "廚房手套S", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },
         { id: 54, category: "衛生用品", name: "廚房手套", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },
         { id: 55, category: "衛生用品", name: "一次性手套", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "袋" },
         { id: 56, category: "清潔用品", name: "地板清潔劑", freezerStock: 3, chillerStock: 1, threshold: 1, unit: "桶" },
@@ -127,13 +129,14 @@
         { id: 61, category: "其他", name: "火腿", freezerStock: 6, chillerStock: 2, threshold: 4, unit: "包" }
     ];
 
-    let data = JSON.parse(localStorage.getItem('tsaiPizza_v5')) || inventoryData;
-    let logs = JSON.parse(localStorage.getItem('tsaiLogs_v5')) || [];
+    let data = JSON.parse(localStorage.getItem('tsaiPizza_v7')) || initialData;
+    let logs = JSON.parse(localStorage.getItem('tsaiLogs_v7')) || [];
     let filter = '全部';
 
     function init() {
         const cats = ['全部', ...new Set(data.map(i => i.category))];
         const container = document.getElementById('filterContainer');
+        container.innerHTML = '';
         cats.forEach(c => {
             const btn = document.createElement('button');
             btn.className = `filter-btn ${filter === c ? 'active' : ''}`;
@@ -145,7 +148,7 @@
     }
 
     function render() {
-        localStorage.setItem('tsaiPizza_v5', JSON.stringify(data));
+        localStorage.setItem('tsaiPizza_v7', JSON.stringify(data));
         const tbody = document.getElementById('inventoryBody');
         const alertBox = document.getElementById('alertBox');
         const alertList = document.getElementById('alertList');
@@ -187,8 +190,8 @@
         else if (type === 'cons' && item.chillerStock >= val) { item.chillerStock -= val; }
         else if (type === 'supp') { item.freezerStock += val; }
         else return alert("庫存不足或操作錯誤");
-        logs.unshift({time: new Date().toLocaleTimeString(), text: `${type} ${item.name} ${val}`});
-        localStorage.setItem('tsaiLogs_v5', JSON.stringify(logs.slice(0, 50)));
+        logs.unshift({time: new Date().toLocaleTimeString(), text: `${type === 'tran' ? '移' : type === 'cons' ? '扣' : '進'} ${item.name} ${val}`});
+        localStorage.setItem('tsaiLogs_v7', JSON.stringify(logs.slice(0, 50)));
         render();
     }
     
