@@ -106,29 +106,27 @@
 </div>
 
 <script>
-// 移除了所有金鑰區塊的縮排空白，防止任何隱形字元干擾
 const firebaseConfig = {
-apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",
-authDomain: "inv3-84f00.firebaseapp.com",
-databaseURL: "https://inv3-84f00-default-rtdb.firebaseio.com",
-projectId: "inv3-84f00",
-storageBucket: "inv3-84f00.firebasestorage.app",
-messagingSenderId: "328169054973",
-appId: "1:328169054973:web:f23bb36d266b7719eed494"
+    apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",
+    authDomain: "inv3-84f00.firebaseapp.com",
+    databaseURL: "https://inv3-84f00-default-rtdb.firebaseio.com",
+    projectId: "inv3-84f00",
+    storageBucket: "inv3-84f00.firebasestorage.app",
+    messagingSenderId: "328169054973",
+    appId: "1:328169054973:web:f23bb36d266b7719eed494"
 };
 
 const allowedEmails = [
-"peter6882@gmail.com",
-"caishushupizza@gmail.com",
-"crystleflute@gmail.com",
-"robintsai0329@gmail.com"
+    "peter6882@gmail.com",
+    "caishushupizza@gmail.com",
+    "crystleflute@gmail.com",
+    "robintsai0329@gmail.com"
 ];
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
 
-// 完整的預設食材資料庫
 const defaultData = [
     { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
     { id: 2, category: "肉類", name: "牛絞肉 (熟/800g包)", freezerStock: 4, chillerStock: 1, threshold: 5, unit: "包" },
@@ -200,6 +198,12 @@ const loginScreen = document.getElementById('loginScreen');
 const mainContent = document.getElementById('mainContent');
 const loginError = document.getElementById('loginError');
 
+// 強制捕捉跳轉錯誤
+auth.getRedirectResult().catch((error) => {
+    loginError.innerText = `⛔ 系統阻擋：${error.message} (請確認您使用的是 github.io 正式網址，且未使用無痕模式)`;
+    loginError.style.display = "block";
+});
+
 function loginWithGoogle() {
     const provider = new firebase.auth.GoogleAuthProvider();
     auth.signInWithRedirect(provider);
@@ -213,14 +217,18 @@ function logout() {
 
 auth.onAuthStateChanged((user) => {
     if (user) {
-        if (allowedEmails.includes(user.email)) {
+        // 將信箱轉為小寫比對，避免大小寫判定錯誤
+        const userEmail = user.email.toLowerCase();
+        const safeEmails = allowedEmails.map(e => e.toLowerCase());
+
+        if (safeEmails.includes(userEmail)) {
             document.getElementById('userGreeting').innerText = `目前使用者：${user.email} (已安全連線)`;
             loginError.style.display = "none";
             loginScreen.style.display = "none";
             mainContent.style.display = "block";
             initializeDatabase();
         } else {
-            loginError.innerText = `⛔ 登入失敗：您的信箱 (${user.email}) 不在授權名單內！`;
+            loginError.innerText = `⛔ 登入失敗：您的信箱 (${user.email}) 不在名單內！`;
             loginError.style.display = "block";
             auth.signOut();
             loginScreen.style.display = "block";
