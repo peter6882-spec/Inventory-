@@ -1,76 +1,318 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>蔡叔叔比薩屋 - 雲端即時庫存系統</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <style>
-        /* 樣式保持不變 */
-        :root { --primary-color: #2e7d32; --transfer-color: #0288d1; --danger-color: #c62828; --bg-color: #f4f6f8; }
-        * { box-sizing: border-box; } body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg-color); padding: 20px; color: #333;}
-        .container { max-width: 1250px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #1b5e20; font-size: 28px; margin-bottom: 5px; }
-        .filter-container { margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-        .filter-btn { padding: 6px 14px; border: 1px solid #ccc; background: #fff; border-radius: 20px; cursor: pointer; }
-        .filter-btn.active { background-color: var(--primary-color); color: white; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: center; }
-        .btn-op { padding: 5px 8px; cursor: pointer; }
-    </style>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.6">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
 </head>
 <body>
-<div class="container">
-    <h1>🍕 蔡叔叔比薩屋 - 雲端即時庫存系統</h1>
-    <div id="filterContainer" class="filter-container"></div>
-    <table>
-        <thead>
-            <tr><th>類別</th><th>名稱</th><th>安全線</th><th>大倉庫存(冷凍庫/備品)</th><th>動態操作</th><th>現場庫存</th><th>狀態</th></tr>
-        </thead>
-        <tbody id="inventoryBody"></tbody>
-    </table>
-</div>
-
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",
-        authDomain: "inv3-84f00.firebaseapp.com",
-        databaseURL: "https://inv3-84f00-default-rtdb.firebaseio.com",
-        projectId: "inv3-84f00",
-        storageBucket: "inv3-84f00.firebasestorage.app",
-        messagingSenderId: "328169054973",
-        appId: "1:328169054973:web:f23bb36d266b7719eed494"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    // 這是修正後的正確結構
-    const correctData = [
-        { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
-        { id: 2, category: "肉類", name: "牛絞肉 (熟/800g包)", freezerStock: 4, chillerStock: 1, threshold: 5, unit: "包" },
-        { id: 3, category: "海鮮", name: "蝦仁 (熟/800g包)", freezerStock: 8, chillerStock: 3, threshold: 4, unit: "包" },
-        { id: 4, category: "海鮮", name: "透抽 (熟/800g包)", freezerStock: 2, chillerStock: 1, threshold: 3, unit: "包" },
-        { id: 5, category: "海鮮", name: "珠貝 (熟/500g包)", freezerStock: 6, chillerStock: 2, threshold: 3, unit: "包" },
-        { id: 60, category: "海鮮", name: "蟹味棒", freezerStock: 5, chillerStock: 2, threshold: 3, unit: "包" },
-        { id: 6, category: "臘腸", name: "大臘腸", freezerStock: 15, chillerStock: 4, threshold: 6, unit: "包" },
-        { id: 7, category: "臘腸", name: "小臘腸", freezerStock: 5, chillerStock: 2, threshold: 4, unit: "袋" },
-        { id: 61, category: "臘腸", name: "火腿", freezerStock: 6, chillerStock: 2, threshold: 4, unit: "包" },
-        // ... (其他保持原樣)
-    ];
-
-    // **關鍵動作：直接用 correctData 強制更新雲端，確保「其他」分類消失**
-    db.ref('inventory').set(correctData);
-
-    // 之後邏輯與原先一致
-    db.ref('inventory').on('value', (snap) => {
-        const data = snap.val();
-        render(data);
-    });
-
-    function render(data) {
-        // 渲染畫面邏輯...
-        console.log("資料已更新為最新結構");
-    }
-</script>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html lang="zh-TW"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta charset="UTF-8"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;title&gt;蔡叔叔比薩屋 - 雲端即時庫存系統&lt;/title&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"&gt;&lt;/script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"&gt;&lt;/script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;style&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>:root { --primary-color: #2e7d32; --transfer-color: #0288d1; --danger-color: #c62828; --bg-color: #f4f6f8; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>* { box-sizing: border-box; } body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg-color); padding: 20px; color: #333;}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.container { max-width: 1250px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>h1 { text-align: center; color: #1b5e20; font-size: 28px; margin-bottom: 5px; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.subtitle { text-align: center; color: #666; margin-bottom: 10px; font-size: 14px; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.sync-status { text-align: center; font-weight: bold; padding: 8px; border-radius: 6px; margin-bottom: 20px; background-color: #e3f2fd; color: #0277bd; }</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.filter-container { margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.filter-btn { padding: 6px 14px; border: 1px solid #ccc; background: #fff; border-radius: 20px; cursor: pointer; font-size: 14px; transition: all 0.2s; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.filter-btn.active, .filter-btn:hover { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>th, td { padding: 12px 8px; border-bottom: 1px solid #ddd; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>th { background-color: #f4f6f5; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.action-group { background: #f1f3f2; padding: 4px; border-radius: 4px; display: inline-flex; gap:3px; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.qty-input { width: 50px; text-align: center; border: 1px solid #ccc; border-radius: 3px;}<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>button.btn-op { padding: 5px 8px; border: none; cursor: pointer; color: white; border-radius: 3px; font-weight: bold;}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.btn-transfer { background: var(--transfer-color); } .btn-consume { background: var(--danger-color); } .btn-supplier { background: #78909c; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.log-container { max-height: 150px; overflow-y: auto; background: #fafafa; padding: 10px; font-size: 13px; margin-top: 10px; border: 1px solid #eee; border-radius: 6px;}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.low-stock { background-color: #fff8f8; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.alert-box { background-color: #ffebee; border-left: 5px solid #c62828; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: none; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/style&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;div class="container"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;h1&gt;🍕 蔡叔叔比薩屋 - 雲端即時庫存系統&lt;/h1&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="subtitle"&gt;※ 不論人在店內或家裡，打開網頁就能看到最新的庫存動態。&lt;/div&gt;</p>
+<p class="p2"><span class="Apple-converted-space">    </span></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="sync-status" id="syncStatus"&gt;⏳ 正在連線到 Firebase 雲端...&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="alert-box" id="alertBox"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;strong style="color: #c62828;"&gt;⚠️ 叫貨提醒：&lt;/strong&gt; 以下大倉庫存過低，請安排叫貨！</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;ul id="alertList" style="margin-bottom: 0; padding-left: 20px; font-size: 14px;"&gt;&lt;/ul&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="filter-container"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="filter-btn active" onclick="filterCategory('全部')"&gt;全部&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="filter-btn" onclick="filterCategory('肉類')"&gt;肉類&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="filter-btn" onclick="filterCategory('海鮮')"&gt;海鮮&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="filter-btn" onclick="filterCategory('臘腸')"&gt;臘腸&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="filter-btn" onclick="filterCategory('薯條起司')"&gt;薯條起司&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="filter-btn" onclick="filterCategory('蔬菜')"&gt;蔬菜&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="filter-btn" onclick="filterCategory('罐頭類')"&gt;罐頭類&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="filter-btn" onclick="filterCategory('粉')"&gt;粉&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="filter-btn" onclick="filterCategory('醬料')"&gt;醬料&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="filter-btn" onclick="filterCategory('外帶醬料')"&gt;外帶醬料&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="filter-btn" onclick="filterCategory('包材')"&gt;包材&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="filter-btn" onclick="filterCategory('衛生用品')"&gt;衛生用品&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="filter-btn" onclick="filterCategory('清潔用品')"&gt;清潔用品&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="filter-btn" onclick="filterCategory('其他')"&gt;其他&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;table&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;thead&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;th style="width: 8%;"&gt;類別&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;th style="text-align: left; width: 16%;"&gt;食材/物品名稱&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;th style="width: 10%;"&gt;安全線&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;th style="width: 12%;"&gt;大倉庫存&lt;br&gt;&lt;small&gt;(總庫/備品)&lt;/small&gt;&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;th style="width: 32%;"&gt;動態操作面板&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;th style="width: 12%;"&gt;現場庫存&lt;br&gt;&lt;small&gt;(冷藏/使用中)&lt;/small&gt;&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;th style="width: 10%;"&gt;狀態&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/thead&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;tbody id="inventoryBody"&gt;&lt;/tbody&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/table&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div style="margin-top:30px; border-top: 2px dashed #ddd; padding-top: 15px;"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style="display: flex; justify-content: space-between; align-items: center;"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;strong style="color: #555;"&gt;🕒 雲端同步日誌&lt;/strong&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button onclick="clearLogs()" style="background:none; border:none; color:#888; text-decoration:underline; cursor:pointer;"&gt;清除紀錄&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="log-container" id="logContainer"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// ==========================================</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// ⚠️ 請將下方的 firebaseConfig 替換為您在「第四步」複製的金鑰</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// ==========================================</p>
+<p class="p1">const firebaseConfig = {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",</p>
+<p class="p1"><span class="Apple-converted-space">  </span>authDomain: "inv3-84f00.firebaseapp.com",</p>
+<p class="p1"><span class="Apple-converted-space">  </span>databaseURL: "https://inv3-84f00-default-rtdb.firebaseio.com",</p>
+<p class="p1"><span class="Apple-converted-space">  </span>projectId: "inv3-84f00",</p>
+<p class="p1"><span class="Apple-converted-space">  </span>storageBucket: "inv3-84f00.firebasestorage.app",</p>
+<p class="p1"><span class="Apple-converted-space">  </span>messagingSenderId: "328169054973",</p>
+<p class="p1"><span class="Apple-converted-space">  </span>appId: "1:328169054973:web:f23bb36d266b7719eed494"</p>
+<p class="p1">};</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// ==========================================</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 初始化 Firebase</p>
+<p class="p1"><span class="Apple-converted-space">    </span>firebase.initializeApp(firebaseConfig);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const db = firebase.database();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 蔡叔叔比薩屋 - 100% 完整菜單預設值</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const defaultData = [</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 2, category: "肉類", name: "牛絞肉 (熟/800g包)", freezerStock: 4, chillerStock: 1, threshold: 5, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 3, category: "海鮮", name: "蝦仁 (熟/800g包)", freezerStock: 8, chillerStock: 3, threshold: 4, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 4, category: "海鮮", name: "透抽 (熟/800g包)", freezerStock: 2, chillerStock: 1, threshold: 3, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 5, category: "海鮮", name: "珠貝 (熟/500g包)", freezerStock: 6, chillerStock: 2, threshold: 3, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 6, category: "臘腸", name: "大臘腸", freezerStock: 15, chillerStock: 4, threshold: 6, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 7, category: "臘腸", name: "小臘腸", freezerStock: 5, chillerStock: 2, threshold: 4, unit: "袋" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 8, category: "薯條起司", name: "薯條", freezerStock: 3, chillerStock: 1, threshold: 5, unit: "袋" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 9, category: "薯條起司", name: "莫扎瑞拉", freezerStock: 8, chillerStock: 2, threshold: 4, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 10, category: "蔬菜", name: "番茄", freezerStock: 20, chillerStock: 5, threshold: 15, unit: "顆" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 11, category: "蔬菜", name: "洋蔥", freezerStock: 15, chillerStock: 4, threshold: 10, unit: "顆" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 12, category: "蔬菜", name: "青椒", freezerStock: 5, chillerStock: 2, threshold: 6, unit: "條" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 13, category: "蔬菜", name: "九層塔", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "兩" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 14, category: "罐頭類", name: "鳳梨", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 15, category: "罐頭類", name: "玉米", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 16, category: "罐頭類", name: "洋菇", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 17, category: "罐頭類", name: "黑橄欖", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 18, category: "粉", name: "鬆厚預拌粉", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 19, category: "粉", name: "薄脆預拌粉", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 20, category: "粉", name: "比薩香料粉", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 21, category: "粉", name: "義式香腸粉", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 22, category: "粉", name: "雞肉醃漬粉", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 23, category: "粉", name: "雞肉裹粉P100", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 24, category: "粉", name: "雞肉裹粉Q50", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 25, category: "粉", name: "雞肉裹粉R0", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 26, category: "醬料", name: "番茄醬5kg", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "袋" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 27, category: "醬料", name: "番茄醬", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "瓶" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 28, category: "醬料", name: "Tabasco", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "瓶" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 29, category: "醬料", name: "BB辣椒醬", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "瓶" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 30, category: "外帶醬料", name: "外帶番茄醬", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 31, category: "外帶醬料", name: "外帶黑胡椒", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 32, category: "外帶醬料", name: "外帶乾辣椒", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 33, category: "外帶醬料", name: "外帶辣椒粉", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 34, category: "包材", name: "12吋比薩盒", freezerStock: 20, chillerStock: 5, threshold: 10, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 35, category: "包材", name: "9吋比薩盒", freezerStock: 20, chillerStock: 5, threshold: 10, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 36, category: "包材", name: "比薩紙", freezerStock: 15, chillerStock: 3, threshold: 5, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 37, category: "包材", name: "大炸雞盒", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "箱" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 38, category: "包材", name: "小炸雞盒", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "箱" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 39, category: "包材", name: "吸油紙", freezerStock: 15, chillerStock: 3, threshold: 5, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 40, category: "包材", name: "冷飲杯+蓋", freezerStock: 30, chillerStock: 5, threshold: 10, unit: "條" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 41, category: "包材", name: "熱飲杯+蓋", freezerStock: 30, chillerStock: 5, threshold: 10, unit: "條" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 42, category: "包材", name: "大背心提袋", freezerStock: 20, chillerStock: 5, threshold: 5, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 43, category: "包材", name: "中背心提袋", freezerStock: 20, chillerStock: 5, threshold: 5, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 44, category: "包材", name: "小背心提袋", freezerStock: 20, chillerStock: 5, threshold: 5, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 45, category: "包材", name: "2杯架", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 46, category: "包材", name: "4杯架", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 47, category: "衛生用品", name: "廚房紙巾", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "袋" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 48, category: "衛生用品", name: "烘培紙", freezerStock: 8, chillerStock: 2, threshold: 3, unit: "條" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 49, category: "衛生用品", name: "桌上衛生紙", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 50, category: "衛生用品", name: "折疊紙巾", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 51, category: "衛生用品", name: "捲筒衛生紙", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 52, category: "衛生用品", name: "濕紙巾", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 53, category: "衛生用品", name: "廚房手套M", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 54, category: "衛生用品", name: "廚房手套", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 55, category: "衛生用品", name: "一次性手套", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "袋" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 56, category: "清潔用品", name: "地板清潔劑", freezerStock: 3, chillerStock: 1, threshold: 1, unit: "桶" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 57, category: "清潔用品", name: "洗碗精", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 58, category: "清潔用品", name: "洗手乳", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 59, category: "清潔用品", name: "洗手液", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 60, category: "其他", name: "蟹味棒", freezerStock: 5, chillerStock: 2, threshold: 3, unit: "包" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 61, category: "其他", name: "火腿", freezerStock: 6, chillerStock: 2, threshold: 4, unit: "包" }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>];</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>let inventoryData = [];</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let currentCategoryFilter = '全部';</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const statusDiv = document.getElementById('syncStatus');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 1. 監聽 Firebase 資料庫變化 (這會達成即時同步效果)</p>
+<p class="p1"><span class="Apple-converted-space">    </span>db.ref('inventory').on('value', (snapshot) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (snapshot.exists()) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>inventoryData = snapshot.val();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusDiv.innerHTML = "🟢 已與 Firebase 雲端即時連線！";</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusDiv.style.backgroundColor = "#e8f5e9";</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusDiv.style.color = "#2e7d32";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>// 如果雲端是空的，把蔡叔叔預設菜單傳上去</p>
+<p class="p1"><span class="Apple-converted-space">            </span>db.ref('inventory').set(defaultData);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>inventoryData = defaultData;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>renderTable();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>db.ref('logs').limitToLast(20).on('value', (snapshot) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let logsHtml = "";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>snapshot.forEach(child =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const log = child.val();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>logsHtml = `&lt;div style="margin-bottom:6px; border-bottom:1px solid #eee; padding-bottom:6px;"&gt;&lt;span style="color:#999;"&gt;[${log.time}]&lt;/span&gt; &lt;span style="margin-left:10px;"&gt;${log.text}&lt;/span&gt;&lt;/div&gt;` + logsHtml;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>});</p>
+<p class="p1"><span class="Apple-converted-space">        </span>document.getElementById('logContainer').innerHTML = logsHtml || '&lt;div style="text-align:center; color:#bbb;"&gt;暫無紀錄&lt;/div&gt;';</p>
+<p class="p1"><span class="Apple-converted-space">    </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 2. 按鈕動作：加減並寫回雲端</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function handleStockAction(index, actionType) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const inputElem = document.getElementById(`input-${index}`);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const val = parseFloat(inputElem.value);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (isNaN(val) || val &lt;= 0) return alert("請輸入大於 0 的數量！");</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const item = inventoryData[index];</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let logText = "";</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (actionType === 'transfer') {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (item.freezerStock &lt; val) return alert("大倉總庫存量不足！");</p>
+<p class="p1"><span class="Apple-converted-space">            </span>item.freezerStock = parseFloat((item.freezerStock - val).toFixed(3));</p>
+<p class="p1"><span class="Apple-converted-space">            </span>item.chillerStock = parseFloat((item.chillerStock + val).toFixed(3));</p>
+<p class="p1"><span class="Apple-converted-space">            </span>logText = `🔄 移出備用：【${item.name}】移至現場 +${val} (大倉剩餘: ${item.freezerStock})`;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>} else if (actionType === 'consume') {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (item.chillerStock &lt; val) return alert("現場存量不足以扣除！");</p>
+<p class="p1"><span class="Apple-converted-space">            </span>item.chillerStock = parseFloat((item.chillerStock - val).toFixed(3));</p>
+<p class="p1"><span class="Apple-converted-space">            </span>logText = `📤 現場消耗：【${item.name}】扣除 -${val} (現場剩餘: ${item.chillerStock})`;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>} else if (actionType === 'supplier') {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>item.freezerStock = parseFloat((item.freezerStock + val).toFixed(3));</p>
+<p class="p1"><span class="Apple-converted-space">            </span>logText = `📦 進貨入庫：【${item.name}】大倉增加 +${val} (大倉最新: ${item.freezerStock})`;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 即時寫回 Firebase</p>
+<p class="p1"><span class="Apple-converted-space">        </span>db.ref('inventory/' + index).update({</p>
+<p class="p1"><span class="Apple-converted-space">            </span>freezerStock: item.freezerStock,</p>
+<p class="p1"><span class="Apple-converted-space">            </span>chillerStock: item.chillerStock</p>
+<p class="p1"><span class="Apple-converted-space">        </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 寫入日誌</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const timeStr = new Date().toLocaleTimeString('zh-TW', {hour12: false});</p>
+<p class="p1"><span class="Apple-converted-space">        </span>db.ref('logs').push({ time: timeStr, text: logText });</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>inputElem.value = '';</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function updateThreshold(index, newVal) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>db.ref('inventory/' + index).update({ threshold: parseFloat(newVal) || 0 });</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function clearLogs() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if(confirm('確定要清除雲端上的所有紀錄嗎？')) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>db.ref('logs').remove();</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function filterCategory(cat) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>currentCategoryFilter = cat;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>document.querySelectorAll('.filter-btn').forEach(btn =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>btn.classList.toggle('active', btn.textContent === cat || (cat === '全部' &amp;&amp; btn.textContent === '全部品項'));</p>
+<p class="p1"><span class="Apple-converted-space">        </span>});</p>
+<p class="p1"><span class="Apple-converted-space">        </span>renderTable();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function renderTable() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (!inventoryData || inventoryData.length === 0) return;</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const tbody = document.getElementById('inventoryBody');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const alertBox = document.getElementById('alertBox');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const alertList = document.getElementById('alertList');</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>tbody.innerHTML = '';</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let lowItemsHtml = '';</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let lowCount = 0;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>inventoryData.forEach((item, index) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (currentCategoryFilter !== '全部' &amp;&amp; item.category !== currentCategoryFilter) return;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>const isLow = item.freezerStock &lt;= item.threshold;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (isLow) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>lowCount++;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>lowItemsHtml += `&lt;li&gt;【${item.category}】${item.name} (大倉剩餘: &lt;strong&gt;${item.freezerStock}&lt;/strong&gt; ${item.unit})&lt;/li&gt;`;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>tbody.innerHTML += `</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;tr class="${isLow ? 'low-stock' : ''}"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;td style="color:#777; font-size:13px;"&gt;${item.category}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;td style="text-align: left;"&gt;&lt;strong&gt;${item.name}&lt;/strong&gt;&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;td&gt;&lt;input type="number" value="${item.threshold}" style="width:45px; text-align:center;" onchange="updateThreshold(${index}, this.value)"&gt;&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;td style="font-size:15px; font-weight:bold; color: ${isLow ? '#c62828' : '#455a64'};"&gt;${item.freezerStock} &lt;small&gt;${item.unit}&lt;/small&gt;&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div class="action-group"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;input type="number" id="input-${index}" class="qty-input" min="0" step="any" placeholder="數量"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;button class="btn-op btn-transfer" onclick="handleStockAction(${index}, 'transfer')"&gt;🔄 移至現場&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;button class="btn-op btn-consume" onclick="handleStockAction(${index}, 'consume')"&gt;－ 消耗&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;button class="btn-op btn-supplier" onclick="handleStockAction(${index}, 'supplier')"&gt;＋ 大倉進貨&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;td style="font-size:15px; font-weight:bold; color: #1565c0;"&gt;${item.chillerStock} &lt;small&gt;${item.unit}&lt;/small&gt;&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;td&gt;${isLow ? '&lt;span style="color:#c62828;font-weight:bold;"&gt;⚠️ 補貨&lt;/span&gt;' : '&lt;span style="color:#2e7d32;"&gt;✅ 充足&lt;/span&gt;'}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>`;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (lowCount &gt; 0) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>alertList.innerHTML = lowItemsHtml;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>alertBox.style.display = 'block';</p>
+<p class="p1"><span class="Apple-converted-space">        </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>alertBox.style.display = 'none';</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1">&lt;/script&gt;</p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
 </body>
 </html>
