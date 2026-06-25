@@ -8,49 +8,28 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         :root { --primary-color: #2e7d32; --transfer-color: #0288d1; --danger-color: #c62828; --bg-color: #f4f6f8; }
-        * { box-sizing: border-box; } body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg-color); padding: 20px; color: #333;}
+        body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg-color); padding: 20px; }
         .container { max-width: 1250px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #1b5e20; font-size: 28px; margin-bottom: 5px; }
-        .subtitle { text-align: center; color: #666; margin-bottom: 10px; font-size: 14px; }
+        h1 { text-align: center; color: #1b5e20; }
         .sync-status { text-align: center; font-weight: bold; padding: 8px; border-radius: 6px; margin-bottom: 20px; background-color: #e3f2fd; color: #0277bd; }
-        .filter-container { margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-        .filter-btn { padding: 6px 14px; border: 1px solid #ccc; background: #fff; border-radius: 20px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
-        .filter-btn.active, .filter-btn:hover { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
         table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; }
-        th, td { padding: 12px 8px; border-bottom: 1px solid #ddd; }
-        th { background-color: #f4f6f5; }
-        .action-group { background: #f1f3f2; padding: 4px; border-radius: 4px; display: inline-flex; gap:3px; }
-        .qty-input { width: 50px; text-align: center; border: 1px solid #ccc; border-radius: 3px; }
-        button.btn-op { padding: 5px 8px; border: none; cursor: pointer; color: white; border-radius: 3px; font-weight: bold; font-size: 13px; }
-        .btn-transfer { background: var(--transfer-color); } .btn-consume { background: var(--danger-color); } .btn-supplier { background: #78909c; }
-        .log-container { max-height: 150px; overflow-y: auto; background: #fafafa; padding: 10px; font-size: 13px; margin-top: 10px; border: 1px solid #eee; border-radius: 6px; }
-        .low-stock { background-color: #fff8f8; }
-        .alert-box { background-color: #ffebee; border-left: 5px solid #c62828; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: none; }
+        th, td { padding: 10px; border-bottom: 1px solid #ddd; }
+        .filter-container { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 20px; }
+        .filter-btn { padding: 6px 12px; border: 1px solid #ccc; background: white; border-radius: 20px; cursor: pointer; }
+        .filter-btn.active { background: #2e7d32; color: white; border: 1px solid #2e7d32; }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>🍕 蔡叔叔比薩屋 - 雲端即時庫存系統</h1>
-    <div class="subtitle">※ 不論人在店內或家裡，打開網頁就能看到最新的庫存動態。</div>
-    <div class="sync-status" id="syncStatus">⏳ 正在連線到 Firebase 雲端...</div>
-    <div class="alert-box" id="alertBox">
-        <strong style="color: #c62828;">⚠️ 叫貨提醒：</strong> 以下大倉庫存過低，請安排叫貨！
-        <ul id="alertList" style="margin-bottom: 0; padding-left: 20px; font-size: 14px;"></ul>
-    </div>
+    <div id="syncStatus" class="sync-status">⏳ 正在連線...</div>
     <div id="filterButtons" class="filter-container"></div>
     <table>
         <thead>
-            <tr><th>類別</th><th>名稱</th><th>安全線</th><th>大倉庫存</th><th>動態操作面板</th><th>現場庫存</th><th>狀態</th></tr>
+            <tr><th>類別</th><th>名稱</th><th>安全線</th><th>大倉庫存</th><th>動態操作</th><th>現場庫存</th><th>狀態</th></tr>
         </thead>
         <tbody id="inventoryBody"></tbody>
     </table>
-    <div style="margin-top:30px; border-top: 2px dashed #ddd; padding-top: 15px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <strong style="color: #555;">🕒 雲端同步日誌</strong>
-            <button onclick="clearLogs()" style="background:none; border:none; color:#888; text-decoration:underline; cursor:pointer;">清除紀錄</button>
-        </div>
-        <div class="log-container" id="logContainer"></div>
-    </div>
 </div>
 
 <script>
@@ -66,6 +45,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // 重新校對過的完整清單
     const fullData = [
         { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
         { id: 2, category: "肉類", name: "牛絞肉 (熟/800g包)", freezerStock: 4, chillerStock: 1, threshold: 5, unit: "包" },
@@ -132,34 +112,31 @@
     ];
 
     let inventoryData = [];
-    let currentCategoryFilter = '全部';
-    const categoriesList = ['全部', '肉類', '海鮮', '臘腸', '薯條起司', '蔬菜', '罐頭類', '粉', '醬料', '外帶醬料', '包材', '衛生用品', '清潔用品'];
+    let currentCategory = '全部';
+    const categories = ['全部', '肉類', '海鮮', '臘腸', '薯條起司', '蔬菜', '罐頭類', '粉', '醬料', '外帶醬料', '包材', '衛生用品', '清潔用品'];
 
     db.ref('inventory').on('value', (snap) => {
-        if (snap.exists()) {
-            inventoryData = Array.isArray(snap.val()) ? snap.val().filter(i => i !== null) : Object.values(snap.val()).filter(i => i !== null);
-            document.getElementById('syncStatus').innerText = "🟢 已與 Firebase 同步";
-        } else {
-            db.ref('inventory').set(fullData);
-            inventoryData = fullData;
-        }
+        if (!snap.exists()) { db.ref('inventory').set(fullData); }
+        inventoryData = snap.val() || fullData;
         render();
     });
 
     function render() {
-        const tbody = document.getElementById('inventoryBody');
+        document.getElementById('syncStatus').innerText = "🟢 已與雲端同步";
         const btnContainer = document.getElementById('filterButtons');
-        tbody.innerHTML = '';
         btnContainer.innerHTML = '';
-        categoriesList.forEach(cat => {
+        categories.forEach(cat => {
             const btn = document.createElement('button');
-            btn.className = `filter-btn ${currentCategoryFilter === cat ? 'active' : ''}`;
+            btn.className = `filter-btn ${currentCategory === cat ? 'active' : ''}`;
             btn.textContent = cat;
-            btn.onclick = () => { currentCategoryFilter = cat; render(); };
+            btn.onclick = () => { currentCategory = cat; render(); };
             btnContainer.appendChild(btn);
         });
+
+        const tbody = document.getElementById('inventoryBody');
+        tbody.innerHTML = '';
         inventoryData.forEach((item, i) => {
-            if (currentCategoryFilter !== '全部' && item.category !== currentCategoryFilter) return;
+            if (currentCategory !== '全部' && item.category !== currentCategory) return;
             tbody.innerHTML += `<tr><td>${item.category}</td><td>${item.name}</td><td>${item.threshold}</td><td>${item.freezerStock}</td><td><div class="action-group"><input type="number" id="in-${i}" class="qty-input"><button class="btn-op btn-transfer" onclick="op(${i},'tran')">移</button><button class="btn-op btn-consume" onclick="op(${i},'cons')">扣</button><button class="btn-op btn-supplier" onclick="op(${i},'supp')">進</button></div></td><td>${item.chillerStock}</td><td>${item.freezerStock <= item.threshold ? '⚠️補' : '✅足'}</td></tr>`;
         });
     }
@@ -167,16 +144,12 @@
     function op(i, type) {
         const val = parseFloat(document.getElementById(`in-${i}`).value);
         if (!val || val <= 0) return alert("請輸入數量");
-        let item = inventoryData[i];
-        if (type === 'tran' && item.freezerStock >= val) { item.freezerStock -= val; item.chillerStock += val; }
-        else if (type === 'cons' && item.chillerStock >= val) { item.chillerStock -= val; }
-        else if (type === 'supp') { item.freezerStock += val; }
+        if (type === 'tran' && inventoryData[i].freezerStock >= val) { inventoryData[i].freezerStock -= val; inventoryData[i].chillerStock += val; }
+        else if (type === 'cons' && inventoryData[i].chillerStock >= val) { inventoryData[i].chillerStock -= val; }
+        else if (type === 'supp') { inventoryData[i].freezerStock += val; }
         else return alert("庫存不足");
         db.ref('inventory').set(inventoryData);
-        db.ref('logs').push({time: new Date().toLocaleTimeString(), text: `${type} ${item.name} ${val}`});
     }
-
-    function clearLogs() { db.ref('logs').remove(); }
 </script>
 </body>
 </html>
