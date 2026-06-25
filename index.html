@@ -12,7 +12,7 @@
         .container { max-width: 1250px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #1b5e20; font-size: 28px; margin-bottom: 5px; }
         .subtitle { text-align: center; color: #666; margin-bottom: 10px; font-size: 14px; }
-        .sync-status { text-align: center; font-weight: bold; padding: 8px; border-radius: 6px; margin-bottom: 20px; background-color: #e3f2fd; color: #0277bd; transition: 0.3s; }
+        .sync-status { text-align: center; font-weight: bold; padding: 8px; border-radius: 6px; margin-bottom: 20px; background-color: #e3f2fd; color: #0277bd; }
         
         .filter-container { margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
         .filter-btn { padding: 6px 14px; border: 1px solid #ccc; background: #fff; border-radius: 20px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
@@ -21,11 +21,10 @@
         table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; }
         th, td { padding: 12px 8px; border-bottom: 1px solid #ddd; }
         th { background-color: #f4f6f5; }
-        .action-group { background: #f1f3f2; padding: 4px; border-radius: 4px; display: inline-flex; gap:3px; align-items: center; }
-        .qty-input { width: 55px; height: 30px; text-align: center; border: 1px solid #ccc; border-radius: 3px;} 
-        button.btn-op { padding: 6px 10px; border: none; cursor: pointer; color: white; border-radius: 4px; font-weight: bold; font-size: 13px;}
+        .action-group { background: #f1f3f2; padding: 4px; border-radius: 4px; display: inline-flex; gap:3px; }
+        .qty-input { width: 50px; text-align: center; border: 1px solid #ccc; border-radius: 3px;} 
+        button.btn-op { padding: 5px 8px; border: none; cursor: pointer; color: white; border-radius: 3px; font-weight: bold;}
         .btn-transfer { background: var(--transfer-color); } .btn-consume { background: var(--danger-color); } .btn-supplier { background: #78909c; }
-        
         .log-container { max-height: 150px; overflow-y: auto; background: #fafafa; padding: 10px; font-size: 13px; margin-top: 10px; border: 1px solid #eee; border-radius: 6px;}
         .low-stock { background-color: #fff8f8; }
         .alert-box { background-color: #ffebee; border-left: 5px solid #c62828; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: none; }
@@ -37,15 +36,29 @@
     <h1>🍕 蔡叔叔比薩屋 - 雲端即時庫存系統</h1>
     <div class="subtitle">※ 不論人在店內或家裡，打開網頁就能看到最新的庫存動態。</div>
     
-    <div class="sync-status" id="syncStatus">⏳ 正在連線到 Firebase 雲端並同步資料...</div>
+    <div class="sync-status" id="syncStatus">⏳ 正在連線到 Firebase 雲端...</div>
 
     <div class="alert-box" id="alertBox">
         <strong style="color: #c62828;">⚠️ 叫貨提醒：</strong> 以下大倉庫存過低，請安排叫貨！
         <ul id="alertList" style="margin-bottom: 0; padding-left: 20px; font-size: 14px;"></ul>
     </div>
 
-    <div class="filter-container" id="filterButtons">
-        </div>
+    <div class="filter-container">
+        <button class="filter-btn active" onclick="filterCategory('全部')">全部</button>
+        <button class="filter-btn" onclick="filterCategory('肉類')">肉類</button>
+        <button class="filter-btn" onclick="filterCategory('海鮮')">海鮮</button>
+        <button class="filter-btn" onclick="filterCategory('臘腸')">臘腸</button>
+        <button class="filter-btn" onclick="filterCategory('薯條起司')">薯條起司</button>
+        <button class="filter-btn" onclick="filterCategory('蔬菜')">蔬菜</button>
+        <button class="filter-btn" onclick="filterCategory('罐頭類')">罐頭類</button>
+        <button class="filter-btn" onclick="filterCategory('粉')">粉</button>
+        <button class="filter-btn" onclick="filterCategory('醬料')">醬料</button>
+        <button class="filter-btn" onclick="filterCategory('外帶醬料')">外帶醬料</button>
+        <button class="filter-btn" onclick="filterCategory('包材')">包材</button>
+        <button class="filter-btn" onclick="filterCategory('衛生用品')">衛生用品</button>
+        <button class="filter-btn" onclick="filterCategory('清潔用品')">清潔用品</button>
+        <button class="filter-btn" onclick="filterCategory('其他')">其他</button>
+    </div>
 
     <table>
         <thead>
@@ -53,7 +66,7 @@
                 <th style="width: 8%;">類別</th>
                 <th style="text-align: left; width: 16%;">食材/物品名稱</th>
                 <th style="width: 10%;">安全線</th>
-                <th style="width: 12%;">大倉庫存<br><small>(冷凍庫/備品)</small></th>
+                <th style="width: 12%;">大倉庫存<br><small>(總庫/備品)</small></th>
                 <th style="width: 32%;">動態操作面板</th>
                 <th style="width: 12%;">現場庫存<br><small>(冷藏/使用中)</small></th>
                 <th style="width: 10%;">狀態</th>
@@ -73,36 +86,34 @@
 
 <script>
     // ==========================================
-    // 1. Firebase 連線設定
+    // ⚠️ 請將下方的 firebaseConfig 替換為您在「第四步」複製的金鑰
     // ==========================================
-    const firebaseConfig = {
-        apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",
-        authDomain: "inv3-84f00.firebaseapp.com",
-        databaseURL: "https://inv3-84f00-default-rtdb.firebaseio.com",
-        projectId: "inv3-84f00",
-        storageBucket: "inv3-84f00.firebasestorage.app",
-        messagingSenderId: "328169054973",
-        appId: "1:328169054973:web:f23bb36d266b7719eed494"
-    };
+const firebaseConfig = {
+  apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",
+  authDomain: "inv3-84f00.firebaseapp.com",
+  databaseURL: "https://inv3-84f00-default-rtdb.firebaseio.com",
+  projectId: "inv3-84f00",
+  storageBucket: "inv3-84f00.firebasestorage.app",
+  messagingSenderId: "328169054973",
+  appId: "1:328169054973:web:f23bb36d266b7719eed494"
+};
+    // ==========================================
+
+    // 初始化 Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // ==========================================
-    // 2. 完整且最新的初始資料 (已移除「其他」，分類已調整完畢)
-    // ==========================================
+    // 蔡叔叔比薩屋 - 100% 完整菜單預設值
     const defaultData = [
         { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
         { id: 2, category: "肉類", name: "牛絞肉 (熟/800g包)", freezerStock: 4, chillerStock: 1, threshold: 5, unit: "包" },
         { id: 3, category: "海鮮", name: "蝦仁 (熟/800g包)", freezerStock: 8, chillerStock: 3, threshold: 4, unit: "包" },
         { id: 4, category: "海鮮", name: "透抽 (熟/800g包)", freezerStock: 2, chillerStock: 1, threshold: 3, unit: "包" },
         { id: 5, category: "海鮮", name: "珠貝 (熟/500g包)", freezerStock: 6, chillerStock: 2, threshold: 3, unit: "包" },
-        { id: 60, category: "海鮮", name: "蟹味棒", freezerStock: 5, chillerStock: 2, threshold: 3, unit: "包" },
         { id: 6, category: "臘腸", name: "大臘腸", freezerStock: 15, chillerStock: 4, threshold: 6, unit: "包" },
         { id: 7, category: "臘腸", name: "小臘腸", freezerStock: 5, chillerStock: 2, threshold: 4, unit: "袋" },
-        { id: 61, category: "臘腸", name: "火腿", freezerStock: 6, chillerStock: 2, threshold: 4, unit: "包" },
         { id: 8, category: "薯條起司", name: "薯條", freezerStock: 3, chillerStock: 1, threshold: 5, unit: "袋" },
         { id: 9, category: "薯條起司", name: "莫扎瑞拉", freezerStock: 8, chillerStock: 2, threshold: 4, unit: "包" },
-        { id: 62, category: "薯條起司", name: "起司", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
         { id: 10, category: "蔬菜", name: "番茄", freezerStock: 20, chillerStock: 5, threshold: 15, unit: "顆" },
         { id: 11, category: "蔬菜", name: "洋蔥", freezerStock: 15, chillerStock: 4, threshold: 10, unit: "顆" },
         { id: 12, category: "蔬菜", name: "青椒", freezerStock: 5, chillerStock: 2, threshold: 6, unit: "條" },
@@ -119,8 +130,8 @@
         { id: 23, category: "粉", name: "雞肉裹粉P100", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
         { id: 24, category: "粉", name: "雞肉裹粉Q50", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
         { id: 25, category: "粉", name: "雞肉裹粉R0", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
-        { id: 26, category: "醬料", name: "番茄醬袋裝", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "袋" },
-        { id: 27, category: "醬料", name: "番茄醬瓶裝", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "瓶" },
+        { id: 26, category: "醬料", name: "番茄醬5kg", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "袋" },
+        { id: 27, category: "醬料", name: "番茄醬", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "瓶" },
         { id: 28, category: "醬料", name: "Tabasco", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "瓶" },
         { id: 29, category: "醬料", name: "BB辣椒醬", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "瓶" },
         { id: 30, category: "外帶醬料", name: "外帶番茄醬", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },
@@ -147,39 +158,32 @@
         { id: 51, category: "衛生用品", name: "捲筒衛生紙", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
         { id: 52, category: "衛生用品", name: "濕紙巾", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
         { id: 53, category: "衛生用品", name: "廚房手套M", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },
-        { id: 54, category: "衛生用品", name: "廚房手套S", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },
+        { id: 54, category: "衛生用品", name: "廚房手套", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },
         { id: 55, category: "衛生用品", name: "一次性手套", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "袋" },
         { id: 56, category: "清潔用品", name: "地板清潔劑", freezerStock: 3, chillerStock: 1, threshold: 1, unit: "桶" },
         { id: 57, category: "清潔用品", name: "洗碗精", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" },
         { id: 58, category: "清潔用品", name: "洗手乳", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" },
-        { id: 59, category: "清潔用品", name: "洗手液", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" }
+        { id: 59, category: "清潔用品", name: "洗手液", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" },
+        { id: 60, category: "其他", name: "蟹味棒", freezerStock: 5, chillerStock: 2, threshold: 3, unit: "包" },
+        { id: 61, category: "其他", name: "火腿", freezerStock: 6, chillerStock: 2, threshold: 4, unit: "包" }
     ];
 
     let inventoryData = [];
     let currentCategoryFilter = '全部';
-    const categoriesList = ['全部', '肉類', '海鮮', '臘腸', '薯條起司', '蔬菜', '罐頭類', '粉', '醬料', '外帶醬料', '包材', '衛生用品', '清潔用品'];
-
-    // ==========================================
-    // 3. 雲端同步與監聽
-    // ==========================================
     const statusDiv = document.getElementById('syncStatus');
 
+    // 1. 監聽 Firebase 資料庫變化 (這會達成即時同步效果)
     db.ref('inventory').on('value', (snapshot) => {
         if (snapshot.exists()) {
-            // 如果雲端有資料，就用雲端的 (過濾掉可能為 null 的項目)
-            inventoryData = snapshot.val().filter(item => item !== null);
+            inventoryData = snapshot.val();
             statusDiv.innerHTML = "🟢 已與 Firebase 雲端即時連線！";
             statusDiv.style.backgroundColor = "#e8f5e9";
             statusDiv.style.color = "#2e7d32";
         } else {
-            // 如果雲端沒資料 (被您刪除時)，自動寫入完整預設資料
+            // 如果雲端是空的，把蔡叔叔預設菜單傳上去
             db.ref('inventory').set(defaultData);
             inventoryData = defaultData;
-            statusDiv.innerHTML = "🟢 資料庫已重置並同步完成！";
-            statusDiv.style.backgroundColor = "#e8f5e9";
-            statusDiv.style.color = "#2e7d32";
         }
-        renderFilterButtons();
         renderTable();
     });
 
@@ -192,9 +196,7 @@
         document.getElementById('logContainer').innerHTML = logsHtml || '<div style="text-align:center; color:#bbb;">暫無紀錄</div>';
     });
 
-    // ==========================================
-    // 4. 操作與渲染邏輯
-    // ==========================================
+    // 2. 按鈕動作：加減並寫回雲端
     function handleStockAction(index, actionType) {
         const inputElem = document.getElementById(`input-${index}`);
         const val = parseFloat(inputElem.value);
@@ -217,7 +219,7 @@
             logText = `📦 進貨入庫：【${item.name}】大倉增加 +${val} (大倉最新: ${item.freezerStock})`;
         }
 
-        // 寫回 Firebase 雲端
+        // 即時寫回 Firebase
         db.ref('inventory/' + index).update({
             freezerStock: item.freezerStock,
             chillerStock: item.chillerStock
@@ -226,6 +228,7 @@
         // 寫入日誌
         const timeStr = new Date().toLocaleTimeString('zh-TW', {hour12: false});
         db.ref('logs').push({ time: timeStr, text: logText });
+
         inputElem.value = '';
     }
 
@@ -241,20 +244,10 @@
 
     function filterCategory(cat) {
         currentCategoryFilter = cat;
-        renderFilterButtons();
-        renderTable();
-    }
-
-    function renderFilterButtons() {
-        const container = document.getElementById('filterButtons');
-        container.innerHTML = '';
-        categoriesList.forEach(cat => {
-            const btn = document.createElement('button');
-            btn.className = `filter-btn ${currentCategoryFilter === cat ? 'active' : ''}`;
-            btn.textContent = cat;
-            btn.onclick = () => filterCategory(cat);
-            container.appendChild(btn);
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.textContent === cat || (cat === '全部' && btn.textContent === '全部品項'));
         });
+        renderTable();
     }
 
     function renderTable() {
