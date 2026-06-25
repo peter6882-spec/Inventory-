@@ -8,22 +8,22 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         :root { --primary-color: #2e7d32; --transfer-color: #0288d1; --danger-color: #c62828; --bg-color: #f4f6f8; }
-        body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg-color); padding: 20px; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg-color); padding: 20px; color: #333; }
         .container { max-width: 1250px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #1b5e20; }
         .sync-status { text-align: center; font-weight: bold; padding: 8px; border-radius: 6px; margin-bottom: 20px; background-color: #e3f2fd; color: #0277bd; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; }
         th, td { padding: 10px; border-bottom: 1px solid #ddd; }
-        .filter-container { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 20px; }
-        .filter-btn { padding: 6px 12px; border: 1px solid #ccc; background: white; border-radius: 20px; cursor: pointer; }
-        .filter-btn.active { background: #2e7d32; color: white; border: 1px solid #2e7d32; }
+        .btn-op { padding: 6px 10px; border: none; cursor: pointer; color: white; border-radius: 4px; font-weight: bold; }
+        .filter-btn { padding: 6px 14px; border: 1px solid #ccc; background: white; border-radius: 20px; cursor: pointer; margin: 2px; }
+        .filter-btn.active { background: #2e7d32; color: white; }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>🍕 蔡叔叔比薩屋 - 雲端即時庫存系統</h1>
     <div id="syncStatus" class="sync-status">⏳ 正在連線...</div>
-    <div id="filterButtons" class="filter-container"></div>
+    <div id="filterButtons" style="display:flex; flex-wrap:wrap; justify-content:center; margin-bottom:20px;"></div>
     <table>
         <thead>
             <tr><th>類別</th><th>名稱</th><th>安全線</th><th>大倉庫存</th><th>動態操作</th><th>現場庫存</th><th>狀態</th></tr>
@@ -45,7 +45,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // 重新校對過的完整清單
+    // 這是您的完整品項清單，確保沒有遺漏
     const fullData = [
         { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
         { id: 2, category: "肉類", name: "牛絞肉 (熟/800g包)", freezerStock: 4, chillerStock: 1, threshold: 5, unit: "包" },
@@ -112,42 +112,40 @@
     ];
 
     let inventoryData = [];
-    let currentCategory = '全部';
-    const categories = ['全部', '肉類', '海鮮', '臘腸', '薯條起司', '蔬菜', '罐頭類', '粉', '醬料', '外帶醬料', '包材', '衛生用品', '清潔用品'];
+    let curCat = '全部';
+    const cats = ['全部', '肉類', '海鮮', '臘腸', '薯條起司', '蔬菜', '罐頭類', '粉', '醬料', '外帶醬料', '包材', '衛生用品', '清潔用品'];
 
-    db.ref('inventory').on('value', (snap) => {
-        if (!snap.exists()) { db.ref('inventory').set(fullData); }
-        inventoryData = snap.val() || fullData;
+    db.ref('inventory').on('value', (s) => {
+        inventoryData = s.val() || fullData;
+        document.getElementById('syncStatus').innerText = "🟢 已與雲端同步";
         render();
     });
 
     function render() {
-        document.getElementById('syncStatus').innerText = "🟢 已與雲端同步";
-        const btnContainer = document.getElementById('filterButtons');
-        btnContainer.innerHTML = '';
-        categories.forEach(cat => {
-            const btn = document.createElement('button');
-            btn.className = `filter-btn ${currentCategory === cat ? 'active' : ''}`;
-            btn.textContent = cat;
-            btn.onclick = () => { currentCategory = cat; render(); };
-            btnContainer.appendChild(btn);
+        const btnC = document.getElementById('filterButtons');
+        btnC.innerHTML = '';
+        cats.forEach(c => {
+            const b = document.createElement('button');
+            b.className = `filter-btn ${curCat===c?'active':''}`;
+            b.textContent = c;
+            b.onclick = () => { curCat = c; render(); };
+            btnC.appendChild(b);
         });
 
-        const tbody = document.getElementById('inventoryBody');
-        tbody.innerHTML = '';
+        const tb = document.getElementById('inventoryBody');
+        tb.innerHTML = '';
         inventoryData.forEach((item, i) => {
-            if (currentCategory !== '全部' && item.category !== currentCategory) return;
-            tbody.innerHTML += `<tr><td>${item.category}</td><td>${item.name}</td><td>${item.threshold}</td><td>${item.freezerStock}</td><td><div class="action-group"><input type="number" id="in-${i}" class="qty-input"><button class="btn-op btn-transfer" onclick="op(${i},'tran')">移</button><button class="btn-op btn-consume" onclick="op(${i},'cons')">扣</button><button class="btn-op btn-supplier" onclick="op(${i},'supp')">進</button></div></td><td>${item.chillerStock}</td><td>${item.freezerStock <= item.threshold ? '⚠️補' : '✅足'}</td></tr>`;
+            if(curCat !== '全部' && item.category !== curCat) return;
+            tb.innerHTML += `<tr><td>${item.category}</td><td>${item.name}</td><td>${item.threshold}</td><td>${item.freezerStock}</td><td><input type="number" id="in-${i}" style="width:40px"><button onclick="op(${i},'t')">移</button><button onclick="op(${i},'c')">扣</button><button onclick="op(${i},'s')">進</button></td><td>${item.chillerStock}</td><td>${item.freezerStock <= item.threshold ? '⚠️' : '✅'}</td></tr>`;
         });
     }
 
-    function op(i, type) {
-        const val = parseFloat(document.getElementById(`in-${i}`).value);
-        if (!val || val <= 0) return alert("請輸入數量");
-        if (type === 'tran' && inventoryData[i].freezerStock >= val) { inventoryData[i].freezerStock -= val; inventoryData[i].chillerStock += val; }
-        else if (type === 'cons' && inventoryData[i].chillerStock >= val) { inventoryData[i].chillerStock -= val; }
-        else if (type === 'supp') { inventoryData[i].freezerStock += val; }
-        else return alert("庫存不足");
+    function op(i, t) {
+        const v = parseFloat(document.getElementById('in-'+i).value);
+        if(!v) return;
+        if(t=='t' && inventoryData[i].freezerStock >= v) { inventoryData[i].freezerStock-=v; inventoryData[i].chillerStock+=v; }
+        else if(t=='c' && inventoryData[i].chillerStock >= v) inventoryData[i].chillerStock-=v;
+        else if(t=='s') inventoryData[i].freezerStock+=v;
         db.ref('inventory').set(inventoryData);
     }
 </script>
