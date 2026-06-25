@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蔡叔叔比薩屋 - 庫存管理系統</title>
+    <style>
+        :root { --primary-color: #2e7d32; --transfer-color: #0288d1; --danger-color: #c62828; --bg-color: #f4f6f8; }
+        * { box-sizing: border-box; } body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg-color); padding: 20px; color: #333;}
+        .container { max-width: 1250px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #1b5e20; font-size: 28px; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 20px; font-size: 14px; }
+        
+        /* 篩選按鈕 - 增加 flex-wrap 避免按鈕太多跑版 */
+        .filter-container { margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+        .filter-btn { padding: 6px 14px; border: 1px solid #ccc; background: #fff; border-radius: 20px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+        .filter-btn.active, .filter-btn:hover { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; }
+        th, td { padding: 12px 8px; border-bottom: 1px solid #ddd; }
+        th { background-color: #f4f6f5; }
+        .action-group { background: #f1f3f2; padding: 4px; border-radius: 4px; display: inline-flex; gap:3px; }
+        .qty-input { width: 50px; text-align: center; border: 1px solid #ccc; border-radius: 3px;} 
+        button.btn-op { padding: 5px 8px; border: none; cursor: pointer; color: white; border-radius: 3px; font-weight: bold;}
+        .btn-transfer { background: var(--transfer-color); } .btn-consume { background: var(--danger-color); } .btn-supplier { background: #78909c; }
+        .log-container { max-height: 150px; overflow-y: auto; background: #fafafa; padding: 10px; font-size: 13px; margin-top: 10px; border: 1px solid #eee; border-radius: 6px;}
+        .low-stock { background-color: #fff8f8; }
+        .alert-box { background-color: #ffebee; border-left: 5px solid #c62828; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🍕 蔡叔叔比薩屋 - 雙溫層庫存管理</h1>
+    <div class="subtitle">※ 資料會自動保存在這台設備的瀏覽器中，關閉網頁也不會遺失。</div>
+
+    <div class="alert-box" id="alertBox">
+        <strong style="color: #c62828;">⚠️ 叫貨提醒：</strong> 以下大倉庫存過低，請安排叫貨！
+        <ul id="alertList" style="margin-bottom: 0; padding-left: 20px; font-size: 14px;"></ul>
+    </div>
+
+    <!-- 分類篩選區塊 -->
+    <div class="filter-container">
+        <button class="filter-btn active" onclick="filterCategory('全部')">全部</button>
+        <button class="filter-btn" onclick="filterCategory('肉類')">肉類</button>
+        <button class="filter-btn" onclick="filterCategory('海鮮')">海鮮</button>
+        <button class="filter-btn" onclick="filterCategory('臘腸')">臘腸</button>
+        <button class="filter-btn" onclick="filterCategory('薯條起司')">薯條起司</button>
+        <button class="filter-btn" onclick="filterCategory('蔬菜')">蔬菜</button>
+        <button class="filter-btn" onclick="filterCategory('罐頭類')">罐頭類</button>
+        <button class="filter-btn" onclick="filterCategory('粉')">粉</button>
+        <button class="filter-btn" onclick="filterCategory('醬料')">醬料</button>
+        <button class="filter-btn" onclick="filterCategory('外帶醬料')">外帶醬料</button>
+        <button class="filter-btn" onclick="filterCategory('包材')">包材</button>
+        <button class="filter-btn" onclick="filterCategory('衛生用品')">衛生用品</button>
+        <button class="filter-btn" onclick="filterCategory('清潔用品')">清潔用品</button>
+        <button class="filter-btn" onclick="filterCategory('其他')">其他</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 8%;">類別</th>
+                <th style="text-align: left; width: 16%;">食材/物品名稱</th>
+                <th style="width: 10%;">安全線</th>
+                <th style="width: 12%;">大倉庫存<br><small>(總庫/備品)</small></th>
+                <th style="width: 32%;">動態操作面板</th>
+                <th style="width: 12%;">現場庫存<br><small>(冷藏/使用中)</small></th>
+                <th style="width: 10%;">狀態</th>
+            </tr>
+        </thead>
+        <tbody id="inventoryBody"></tbody>
+    </table>
+
+    <div style="margin-top:30px; border-top: 2px dashed #ddd; padding-top: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong style="color: #555;">🕒 異動日誌</strong>
+            <button onclick="clearLogs()" style="background:none; border:none; color:#888; text-decoration:underline; cursor:pointer;">清除紀錄</button>
+        </div>
+        <div class="log-container" id="logContainer"></div>
+    </div>
+</div>
+
+<script>
+    // 預設資料：包含最新補充的包材、衛生用品、清潔用品與所有食材清單
+    const defaultData = [
+        // 肉類 & 海鮮 & 臘腸 & 起司
+        { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
+        { id: 2, category: "肉類", name: "牛絞肉 (熟/800g包)", freezerStock: 4, chillerStock: 1, threshold: 5, unit: "包" },
+        { id: 3, category: "海鮮", name: "蝦仁 (熟/800g包)", freezerStock: 8, chillerStock: 3, threshold: 4, unit: "包" },
+        { id: 4, category: "海鮮", name: "透抽 (熟/800g包)", freezerStock: 2, chillerStock: 1, threshold: 3, unit: "包" },
+        { id: 5, category: "海鮮", name: "珠貝 (熟/500g包)", freezerStock: 6, chillerStock: 2, threshold: 3, unit: "包" },
+        { id: 6, category: "臘腸", name: "大臘腸", freezerStock: 15, chillerStock: 4, threshold: 6, unit: "包" },
+        { id: 7, category: "臘腸", name: "小臘腸", freezerStock: 5, chillerStock: 2, threshold: 4, unit: "袋" },
+        { id: 8, category: "薯條起司", name: "薯條", freezerStock: 3, chillerStock: 1, threshold: 5, unit: "袋" },
+        { id: 9, category: "薯條起司", name: "莫扎瑞拉", freezerStock: 8, chillerStock: 2, threshold: 4, unit: "包" },
+        
+        // 蔬菜類
+        { id: 10, category: "蔬菜", name: "番茄", freezerStock: 20, chillerStock: 5, threshold: 15, unit: "顆" },
+        { id: 11, category: "蔬菜", name: "洋蔥", freezerStock: 15, chillerStock: 4, threshold: 10, unit: "顆" },
+        { id: 12, category: "蔬菜", name: "青椒", freezerStock: 5, chillerStock: 2, threshold: 6, unit: "條" },
+        { id: 13, category: "蔬菜", name: "九層塔", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "兩" },
+        
+        // 罐頭類
+        { id: 14, category: "罐頭類", name: "鳳梨", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },
+        { id: 15, category: "罐頭類", name: "玉米", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },
+        { id: 16, category: "罐頭類", name: "洋菇", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },
+        { id: 17, category: "罐頭類", name: "黑橄欖", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },
+        
+        // 粉
+        { id: 18, category: "粉", name: "鬆厚預拌粉", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
+        { id: 19, category: "粉", name: "薄脆預拌粉", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
+        { id: 20, category: "粉", name: "比薩香料粉", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
+        { id: 21, category: "粉", name: "義式香腸粉", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
+        { id: 22, category: "粉", name: "雞肉醃漬粉", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
+        { id: 23, category: "粉", name: "雞肉裹粉P100", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
+        { id: 24, category: "粉", name: "雞肉裹粉Q50", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
+        { id: 25, category: "粉", name: "雞肉裹粉R0", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
+        
+        // 醬料
+        { id: 26, category: "醬料", name: "番茄醬5kg", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "袋" },
+        { id: 27, category: "醬料", name: "番茄醬", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "瓶" },
+        { id: 28, category: "醬料", name: "Tabasco", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "瓶" },
+        { id: 29, category: "醬料", name: "BB辣椒醬", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "瓶" },
+        
+        // 外帶醬料
+        { id: 30, category: "外帶醬料", name: "外帶番茄醬", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },
+        { id: 31, category: "外帶醬料", name: "外帶黑胡椒", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },
+        { id: 32, category: "外帶醬料", name: "外帶乾辣椒", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },
+        { id: 33, category: "外帶醬料", name: "外帶辣椒粉", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },
+        
+        // 包材 (兩週清點一次)
+        { id: 34, category: "包材", name: "12吋比薩盒", freezerStock: 20, chillerStock: 5, threshold: 10, unit: "包" },
+        { id: 35, category: "包材", name: "9吋比薩盒", freezerStock: 20, chillerStock: 5, threshold: 10, unit: "包" },
+        { id: 36, category: "包材", name: "比薩紙", freezerStock: 15, chillerStock: 3, threshold: 5, unit: "包" },
+        { id: 37, category: "包材", name: "大炸雞盒", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "箱" },
+        { id: 38, category: "包材", name: "小炸雞盒", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "箱" },
+        { id: 39, category: "包材", name: "吸油紙", freezerStock: 15, chillerStock: 3, threshold: 5, unit: "包" },
+        { id: 40, category: "包材", name: "冷飲杯+蓋", freezerStock: 30, chillerStock: 5, threshold: 10, unit: "條" },
+        { id: 41, category: "包材", name: "熱飲杯+蓋", freezerStock: 30, chillerStock: 5, threshold: 10, unit: "條" },
+        { id: 42, category: "包材", name: "大背心提袋", freezerStock: 20, chillerStock: 5, threshold: 5, unit: "包" },
+        { id: 43, category: "包材", name: "中背心提袋", freezerStock: 20, chillerStock: 5, threshold: 5, unit: "包" },
+        { id: 44, category: "包材", name: "小背心提袋", freezerStock: 20, chillerStock: 5, threshold: 5, unit: "包" },
+        { id: 45, category: "包材", name: "2杯架", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "包" },
+        { id: 46, category: "包材", name: "4杯架", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "包" },
+
+        // 衛生用品
+        { id: 47, category: "衛生用品", name: "廚房紙巾", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "袋" },
+        { id: 48, category: "衛生用品", name: "烘培紙", freezerStock: 8, chillerStock: 2, threshold: 3, unit: "條" },
+        { id: 49, category: "衛生用品", name: "桌上衛生紙", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
+        { id: 50, category: "衛生用品", name: "折疊紙巾", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
+        { id: 51, category: "衛生用品", name: "捲筒衛生紙", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
+        { id: 52, category: "衛生用品", name: "濕紙巾", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
+        { id: 53, category: "衛生用品", name: "廚房手套M", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },
+        { id: 54, category: "衛生用品", name: "廚房手套", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },
+        { id: 55, category: "衛生用品", name: "一次性手套", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "袋" },
+
+        // 清潔用品
+        { id: 56, category: "清潔用品", name: "地板清潔劑", freezerStock: 3, chillerStock: 1, threshold: 1, unit: "桶" },
+        { id: 57, category: "清潔用品", name: "洗碗精", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" },
+        { id: 58, category: "清潔用品", name: "洗手乳", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" },
+        { id: 59, category: "清潔用品", name: "洗手液", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" },
+
+        // 其他
+        { id: 60, category: "其他", name: "蟹味棒", freezerStock: 5, chillerStock: 2, threshold: 3, unit: "包" },
+        { id: 61, category: "其他", name: "火腿", freezerStock: 6, chillerStock: 2, threshold: 4, unit: "包" }
+    ];
+
+    // 更換記憶體 Key 為 v4，強制載入最完整菜單
+    let inventoryData = JSON.parse(localStorage.getItem('tsaiPizza_v4')) || defaultData;
+    let logs = JSON.parse(localStorage.getItem('tsaiLogs_v4')) || [];
+    let currentCategoryFilter = '全部';
+
+    // 存檔功能
+    function saveData() {
+        localStorage.setItem('tsaiPizza_v4', JSON.stringify(inventoryData));
+        localStorage.setItem('tsaiLogs_v4', JSON.stringify(logs));
+    }
+
+    function addLog(text) {
+        const timeStr = new Date().toLocaleTimeString('zh-TW', {hour12: false});
+        logs.unshift({ time: timeStr, text: text });
+        if (logs.length > 50) logs.pop(); 
+        saveData();
+        renderTable();
+    }
+
+    function clearLogs() {
+        if(confirm('確定要清除所有紀錄嗎？')) {
+            logs = [];
+            saveData();
+            renderTable();
+        }
+    }
+
+    function filterCategory(cat) {
+        currentCategoryFilter = cat;
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.textContent === cat || (cat === '全部' && btn.textContent === '全部品項'));
+        });
+        renderTable();
+    }
+
+    function updateThreshold(index, newVal) {
+        inventoryData[index].threshold = parseFloat(newVal) || 0;
+        saveData();
+        renderTable();
+    }
+
+    function handleStockAction(index, actionType) {
+        const inputElem = document.getElementById(`input-${index}`);
+        const val = parseFloat(inputElem.value);
+        if (isNaN(val) || val <= 0) return alert("請輸入大於 0 的數量！");
+        
+        const item = inventoryData[index];
+
+        if (actionType === 'transfer') {
+            if (item.freezerStock < val) return alert("大倉總庫存量不足！");
+            item.freezerStock = parseFloat((item.freezerStock - val).toFixed(3));
+            item.chillerStock = parseFloat((item.chillerStock + val).toFixed(3));
+            addLog(`🔄 移出備用：【${item.name}】移至現場 +${val} (大倉剩餘: ${item.freezerStock})`);
+        } else if (actionType === 'consume') {
+            if (item.chillerStock < val) return alert("現場存量不足以扣除！");
+            item.chillerStock = parseFloat((item.chillerStock - val).toFixed(3));
+            addLog(`📤 現場消耗：【${item.name}】扣除 -${val} (現場剩餘: ${item.chillerStock})`);
+        } else if (actionType === 'supplier') {
+            item.freezerStock = parseFloat((item.freezerStock + val).toFixed(3));
+            addLog(`📦 進貨入庫：【${item.name}】大倉增加 +${val} (大倉最新: ${item.freezerStock})`);
+        }
+
+        saveData();
+        inputElem.value = '';
+        renderTable();
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('inventoryBody');
+        const alertBox = document.getElementById('alertBox');
+        const alertList = document.getElementById('alertList');
+        
+        tbody.innerHTML = '';
+        let lowItemsHtml = '';
+        let lowCount = 0;
+
+        inventoryData.forEach((item, index) => {
+            // 判斷分類篩選
+            if (currentCategoryFilter !== '全部' && item.category !== currentCategoryFilter) return;
+
+            const isLow = item.freezerStock <= item.threshold;
+            if (isLow) {
+                lowCount++;
+                lowItemsHtml += `<li>【${item.category}】${item.name} (大倉剩餘: <strong>${item.freezerStock}</strong> ${item.unit})</li>`;
+            }
+
+            tbody.innerHTML += `
+                <tr class="${isLow ? 'low-stock' : ''}">
+                    <td style="color:#777; font-size:13px;">${item.category}</td>
+                    <td style="text-align: left;"><strong>${item.name}</strong></td>
+                    <td><input type="number" value="${item.threshold}" style="width:45px; text-align:center;" onchange="updateThreshold(${index}, this.value)"></td>
+                    <td style="font-size:15px; font-weight:bold; color: ${isLow ? '#c62828' : '#455a64'};">${item.freezerStock} <small>${item.unit}</small></td>
+                    <td>
+                        <div class="action-group">
+                            <input type="number" id="input-${index}" class="qty-input" min="0" step="any" placeholder="數量">
+                            <button class="btn-op btn-transfer" onclick="handleStockAction(${index}, 'transfer')">🔄 移至現場</button>
+                            <button class="btn-op btn-consume" onclick="handleStockAction(${index}, 'consume')">－ 消耗</button>
+                            <button class="btn-op btn-supplier" onclick="handleStockAction(${index}, 'supplier')">＋ 大倉進貨</button>
+                        </div>
+                    </td>
+                    <td style="font-size:15px; font-weight:bold; color: #1565c0;">${item.chillerStock} <small>${item.unit}</small></td>
+                    <td>${isLow ? '<span style="color:#c62828;font-weight:bold;">⚠️ 補貨</span>' : '<span style="color:#2e7d32;">✅ 充足</span>'}</td>
+                </tr>
+            `;
+        });
+
+        // 處理警告區塊顯示
+        if (lowCount > 0) {
+            alertList.innerHTML = lowItemsHtml;
+            alertBox.style.display = 'block';
+        } else {
+            alertBox.style.display = 'none';
+        }
+
+        // 渲染日誌
+        document.getElementById('logContainer').innerHTML = logs.length ? 
+            logs.map(l => `<div style="margin-bottom:6px; border-bottom:1px solid #eee; padding-bottom:6px;"><span style="color:#999;">[${l.time}]</span> <span style="margin-left:10px;">${l.text}</span></div>`).join('') : 
+            '<div style="text-align:center; color:#bbb;">暫無紀錄</div>';
+    }
+
+    renderTable();
+</script>
+</body>
+</html>
