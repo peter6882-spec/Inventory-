@@ -121,3 +121,174 @@
         { id: 30, category: "外帶醬料", name: "外帶番茄醬", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },
         { id: 31, category: "外帶醬料", name: "外帶黑胡椒", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },
         { id: 32, category: "外帶醬料", name: "外帶乾辣椒", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },
+        { id: 33, category: "外帶醬料", name: "外帶辣椒粉", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },
+        { id: 34, category: "包材", name: "12吋比薩盒", freezerStock: 20, chillerStock: 5, threshold: 10, unit: "包" },
+        { id: 35, category: "包材", name: "9吋比薩盒", freezerStock: 20, chillerStock: 5, threshold: 10, unit: "包" },
+        { id: 36, category: "包材", name: "比薩紙", freezerStock: 15, chillerStock: 3, threshold: 5, unit: "包" },
+        { id: 37, category: "包材", name: "大炸雞盒", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "箱" },
+        { id: 38, category: "包材", name: "小炸雞盒", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "箱" },
+        { id: 39, category: "包材", name: "吸油紙", freezerStock: 15, chillerStock: 3, threshold: 5, unit: "包" },
+        { id: 40, category: "包材", name: "冷飲杯+蓋", freezerStock: 30, chillerStock: 5, threshold: 10, unit: "條" },
+        { id: 41, category: "包材", name: "熱飲杯+蓋", freezerStock: 30, chillerStock: 5, threshold: 10, unit: "條" },
+        { id: 42, category: "包材", name: "大背心提袋", freezerStock: 20, chillerStock: 5, threshold: 5, unit: "包" },
+        { id: 43, category: "包材", name: "中背心提袋", freezerStock: 20, chillerStock: 5, threshold: 5, unit: "包" },
+        { id: 44, category: "包材", name: "小背心提袋", freezerStock: 20, chillerStock: 5, threshold: 5, unit: "包" },
+        { id: 45, category: "包材", name: "2杯架", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "包" },
+        { id: 46, category: "包材", name: "4杯架", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "包" },
+        { id: 47, category: "衛生用品", name: "廚房紙巾", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "袋" },
+        { id: 48, category: "衛生用品", name: "烘培紙", freezerStock: 8, chillerStock: 2, threshold: 3, unit: "條" },
+        { id: 49, category: "衛生用品", name: "桌上衛生紙", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
+        { id: 50, category: "衛生用品", name: "折疊紙巾", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
+        { id: 51, category: "衛生用品", name: "捲筒衛生紙", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
+        { id: 52, category: "衛生用品", name: "濕紙巾", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
+        { id: 53, category: "衛生用品", name: "廚房手套M", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },
+        { id: 54, category: "衛生用品", name: "廚房手套S", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },
+        { id: 55, category: "衛生用品", name: "一次性手套", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "袋" },
+        { id: 56, category: "清潔用品", name: "地板清潔劑", freezerStock: 3, chillerStock: 1, threshold: 1, unit: "桶" },
+        { id: 57, category: "清潔用品", name: "洗碗精", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" },
+        { id: 58, category: "清潔用品", name: "洗手乳", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" },
+        { id: 59, category: "清潔用品", name: "洗手液", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" }
+    ];
+
+    let inventoryData = [];
+    let currentCategoryFilter = '全部';
+    const categoriesList = ['全部', '肉類', '海鮮', '臘腸', '薯條起司', '蔬菜', '罐頭類', '粉', '醬料', '外帶醬料', '包材', '衛生用品', '清潔用品'];
+
+    const statusDiv = document.getElementById('syncStatus');
+
+    db.ref('inventory').on('value', (snapshot) => {
+        if (snapshot.exists()) {
+            inventoryData = snapshot.val().filter(item => item !== null);
+            statusDiv.innerHTML = "🟢 已與 Firebase 雲端即時連線！";
+            statusDiv.style.backgroundColor = "#e8f5e9";
+            statusDiv.style.color = "#2e7d32";
+        } else {
+            db.ref('inventory').set(defaultData);
+            inventoryData = defaultData;
+            statusDiv.innerHTML = "🟢 資料庫已重置並同步完成！";
+            statusDiv.style.backgroundColor = "#e8f5e9";
+            statusDiv.style.color = "#2e7d32";
+        }
+        renderFilterButtons();
+        renderTable();
+    });
+
+    db.ref('logs').limitToLast(20).on('value', (snapshot) => {
+        let logsHtml = "";
+        snapshot.forEach(child => {
+            const log = child.val();
+            logsHtml = `<div style="margin-bottom:6px; border-bottom:1px solid #eee; padding-bottom:6px;"><span style="color:#999;">[${log.time}]</span> <span style="margin-left:10px;">${log.text}</span></div>` + logsHtml;
+        });
+        document.getElementById('logContainer').innerHTML = logsHtml || '<div style="text-align:center; color:#bbb;">暫無紀錄</div>';
+    });
+
+    function handleStockAction(index, actionType) {
+        const inputElem = document.getElementById(`input-${index}`);
+        const val = parseFloat(inputElem.value);
+        if (isNaN(val) || val <= 0) return alert("請輸入大於 0 的數量！");
+        
+        const item = inventoryData[index];
+        let logText = "";
+
+        if (actionType === 'transfer') {
+            if (item.freezerStock < val) return alert("大倉總庫存量不足！");
+            item.freezerStock = parseFloat((item.freezerStock - val).toFixed(3));
+            item.chillerStock = parseFloat((item.chillerStock + val).toFixed(3));
+            logText = `🔄 移出備用：【${item.name}】移至現場 +${val} (大倉剩餘: ${item.freezerStock})`;
+        } else if (actionType === 'consume') {
+            if (item.chillerStock < val) return alert("現場存量不足以扣除！");
+            item.chillerStock = parseFloat((item.chillerStock - val).toFixed(3));
+            logText = `📤 現場消耗：【${item.name}】扣除 -${val} (現場剩餘: ${item.chillerStock})`;
+        } else if (actionType === 'supplier') {
+            item.freezerStock = parseFloat((item.freezerStock + val).toFixed(3));
+            logText = `📦 進貨入庫：【${item.name}】大倉增加 +${val} (大倉最新: ${item.freezerStock})`;
+        }
+
+        db.ref('inventory/' + index).update({
+            freezerStock: item.freezerStock,
+            chillerStock: item.chillerStock
+        });
+
+        const timeStr = new Date().toLocaleTimeString('zh-TW', {hour12: false});
+        db.ref('logs').push({ time: timeStr, text: logText });
+        inputElem.value = '';
+    }
+
+    function updateThreshold(index, newVal) {
+        db.ref('inventory/' + index).update({ threshold: parseFloat(newVal) || 0 });
+    }
+
+    function clearLogs() {
+        if(confirm('確定要清除雲端上的所有紀錄嗎？')) {
+            db.ref('logs').remove();
+        }
+    }
+
+    function filterCategory(cat) {
+        currentCategoryFilter = cat;
+        renderFilterButtons();
+        renderTable();
+    }
+
+    function renderFilterButtons() {
+        const container = document.getElementById('filterButtons');
+        container.innerHTML = '';
+        categoriesList.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = `filter-btn ${currentCategoryFilter === cat ? 'active' : ''}`;
+            btn.textContent = cat;
+            btn.onclick = () => filterCategory(cat);
+            container.appendChild(btn);
+        });
+    }
+
+    function renderTable() {
+        if (!inventoryData || inventoryData.length === 0) return;
+        
+        const tbody = document.getElementById('inventoryBody');
+        const alertBox = document.getElementById('alertBox');
+        const alertList = document.getElementById('alertList');
+        
+        tbody.innerHTML = '';
+        let lowItemsHtml = '';
+        let lowCount = 0;
+
+        inventoryData.forEach((item, index) => {
+            if (currentCategoryFilter !== '全部' && item.category !== currentCategoryFilter) return;
+
+            const isLow = item.freezerStock <= item.threshold;
+            if (isLow) {
+                lowCount++;
+                lowItemsHtml += `<li>【${item.category}】${item.name} (大倉剩餘: <strong>${item.freezerStock}</strong> ${item.unit})</li>`;
+            }
+
+            tbody.innerHTML += `
+                <tr class="${isLow ? 'low-stock' : ''}">
+                    <td style="color:#777; font-size:13px;">${item.category}</td>
+                    <td style="text-align: left;"><strong>${item.name}</strong></td>
+                    <td><input type="number" value="${item.threshold}" style="width:45px; text-align:center;" onchange="updateThreshold(${index}, this.value)"></td>
+                    <td style="font-size:15px; font-weight:bold; color: ${isLow ? '#c62828' : '#455a64'};">${item.freezerStock} <small>${item.unit}</small></td>
+                    <td>
+                        <div class="action-group">
+                            <input type="number" id="input-${index}" class="qty-input" min="0" step="any" placeholder="數量">
+                            <button class="btn-op btn-transfer" onclick="handleStockAction(${index}, 'transfer')">🔄 移至現場</button>
+                            <button class="btn-op btn-consume" onclick="handleStockAction(${index}, 'consume')">－ 消耗</button>
+                            <button class="btn-op btn-supplier" onclick="handleStockAction(${index}, 'supplier')">＋ 大倉進貨</button>
+                        </div>
+                    </td>
+                    <td style="font-size:15px; font-weight:bold; color: #1565c0;">${item.chillerStock} <small>${item.unit}</small></td>
+                    <td>${isLow ? '<span style="color:#c62828;font-weight:bold;">⚠️ 補貨</span>' : '<span style="color:#2e7d32;">✅ 充足</span>'}</td>
+                </tr>
+            `;
+        });
+
+        if (lowCount > 0) {
+            alertList.innerHTML = lowItemsHtml;
+            alertBox.style.display = 'block';
+        } else {
+            alertBox.style.display = 'none';
+        }
+    }
+</script>
+</body>
+</html>
