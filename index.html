@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>蔡叔叔比薩屋 - 庫存管理系統</title>
+    <title>蔡叔叔比薩屋 - 庫存管理系統 (雲端版)</title>
     <style>
         :root { --primary-color: #2e7d32; --transfer-color: #0288d1; --danger-color: #c62828; --bg-color: #f4f6f8; }
         * { box-sizing: border-box; } body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg-color); padding: 20px; color: #333;}
@@ -25,13 +25,16 @@
         .log-container { max-height: 150px; overflow-y: auto; background: #fafafa; padding: 10px; font-size: 13px; margin-top: 10px; border: 1px solid #eee; border-radius: 6px;}
         .low-stock { background-color: #fff8f8; }
         .alert-box { background-color: #ffebee; border-left: 5px solid #c62828; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: none; }
+        
+        /* 新增載入中狀態的樣式 */
+        .loading-text { text-align: center; padding: 30px; font-size: 18px; color: #666; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>🍕 蔡叔叔比薩屋 - 雙溫層庫存管理</h1>
-    <div class="subtitle">※ 資料會自動保存在這台設備的瀏覽器中。</div>
+    <div class="subtitle">※ 資料已連結至 Firebase 雲端，多台裝置可即時同步。</div>
 
     <div class="alert-box" id="alertBox">
         <strong style="color: #c62828;">⚠️ 叫貨提醒：</strong> 以下大倉庫存過低，請安排叫貨！
@@ -67,7 +70,9 @@
                 <th style="width: 10%;">狀態</th>
             </tr>
         </thead>
-        <tbody id="inventoryBody"></tbody>
+        <tbody id="inventoryBody">
+            <tr><td colspan="7" class="loading-text">🔄 正在連接雲端資料庫，請稍候...</td></tr>
+        </tbody>
     </table>
 
     <div style="margin-top:30px; border-top: 2px dashed #ddd; padding-top: 15px;">
@@ -79,8 +84,32 @@
     </div>
 </div>
 
-<script>
-    // 既有品項與邏輯保持一致
+<script type="module">
+    // 1. 引入 Firebase SDK
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // =========================================================================
+    // ⚠️ 請在這裡貼上您 Firebase 專案的 Config 設定金鑰
+    // =========================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",
+  authDomain: "inv3-84f00.firebaseapp.com",
+  databaseURL: "https://inv3-84f00-default-rtdb.firebaseio.com",
+  projectId: "inv3-84f00",
+  storageBucket: "inv3-84f00.firebasestorage.app",
+  messagingSenderId: "328169054973",
+  appId: "1:328169054973:web:f23bb36d266b7719eed494"
+};
+
+    // 初始化 Firebase 與 Firestore
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    
+    // 指定資料庫存放的路徑 (集合名稱: inventory, 文件名稱: mainStore)
+    const docRef = doc(db, "inventory", "mainStore");
+
+    // 預設資料 (與原本相同)
     const defaultData = [
         { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
         { id: 2, category: "肉類", name: "牛絞肉 (熟/800g包)", freezerStock: 4, chillerStock: 1, threshold: 5, unit: "包" },
@@ -102,7 +131,6 @@
         { id: 15, category: "罐頭類", name: "玉米", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },
         { id: 16, category: "罐頭類", name: "洋菇", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },
         { id: 17, category: "罐頭類", name: "黑橄欖", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },
-        // 新增飲料項目
         { id: 70, category: "飲料", name: "茶葉", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "包" },
         { id: 71, category: "飲料", name: "小美冰淇淋", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "桶" },
         { id: 72, category: "飲料", name: "K冰淇淋", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "盒" },
@@ -117,7 +145,6 @@
         { id: 23, category: "粉", name: "雞肉裹粉P100", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
         { id: 24, category: "粉", name: "雞肉裹粉Q50", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
         { id: 25, category: "粉", name: "雞肉裹粉R0", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
-        // 修改醬料名稱
         { id: 26, category: "醬料", name: "番茄醬 (袋裝)", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "袋" },
         { id: 27, category: "醬料", name: "番茄醬 (瓶裝)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "瓶" },
         { id: 28, category: "醬料", name: "Tabasco", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "瓶" },
@@ -145,7 +172,6 @@
         { id: 50, category: "衛生用品", name: "折疊紙巾", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
         { id: 51, category: "衛生用品", name: "捲筒衛生紙", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
         { id: 52, category: "衛生用品", name: "濕紙巾", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
-        // 修改廚房手套名稱
         { id: 53, category: "衛生用品", name: "廚房手套S", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },
         { id: 54, category: "衛生用品", name: "廚房手套", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },
         { id: 55, category: "衛生用品", name: "一次性手套", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "袋" },
@@ -155,46 +181,69 @@
         { id: 59, category: "清潔用品", name: "洗手液", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" }
     ];
 
-    let inventoryData = JSON.parse(localStorage.getItem('tsaiPizza_v625_update')) || defaultData;
-    let logs = JSON.parse(localStorage.getItem('tsaiLogs_v625_update')) || [];
+    let inventoryData = [];
+    let logs = [];
     let currentCategoryFilter = '全部';
 
-    function saveData() {
-        localStorage.setItem('tsaiPizza_v625_update', JSON.stringify(inventoryData));
-        localStorage.setItem('tsaiLogs_v625_update', JSON.stringify(logs));
+    // 2. 監聽 Firestore 即時更新 (取代原來的 localStorage.getItem)
+    onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            inventoryData = data.items || defaultData;
+            logs = data.logs || [];
+        } else {
+            // 如果雲端完全沒有資料（第一次使用），就寫入預設資料
+            inventoryData = defaultData;
+            saveDataToCloud();
+        }
+        renderTable();
+    }, (error) => {
+        console.error("讀取資料失敗:", error);
+        document.getElementById('inventoryBody').innerHTML = `<tr><td colspan="7" class="loading-text" style="color:red;">❌ 無法連接到資料庫，請檢查 Firebase 設定或網路連線。</td></tr>`;
+    });
+
+    // 3. 儲存資料到 Firestore (取代原來的 localStorage.setItem)
+    function saveDataToCloud() {
+        setDoc(docRef, {
+            items: inventoryData,
+            logs: logs,
+            lastUpdated: new Date().toISOString()
+        }).catch(error => {
+            alert("雲端儲存失敗，請檢查網路連線：" + error.message);
+        });
     }
+
+    // ---------------- 以下為邏輯處理函式 ----------------
 
     function addLog(text) {
         const timeStr = new Date().toLocaleTimeString('zh-TW', {hour12: false});
         logs.unshift({ time: timeStr, text: text });
         if (logs.length > 50) logs.pop(); 
-        saveData();
-        renderTable();
+        saveDataToCloud();
     }
 
-    function clearLogs() {
-        if(confirm('確定要清除所有紀錄嗎？')) {
+    // 將函式掛載到 window，讓 HTML 的 onclick 可以呼叫到 (因為 module 作用域隔離)
+    window.clearLogs = function() {
+        if(confirm('確定要清除所有紀錄嗎？(所有連線設備都會被清除)')) {
             logs = [];
-            saveData();
-            renderTable();
+            saveDataToCloud();
         }
-    }
+    };
 
-    function filterCategory(cat) {
+    window.filterCategory = function(cat) {
         currentCategoryFilter = cat;
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.classList.toggle('active', btn.textContent === cat || (cat === '全部' && btn.textContent === '全部'));
         });
         renderTable();
-    }
+    };
 
-    function updateThreshold(index, newVal) {
+    window.updateThreshold = function(index, newVal) {
         inventoryData[index].threshold = parseFloat(newVal) || 0;
-        saveData();
-        renderTable();
-    }
+        saveDataToCloud();
+    };
 
-    function handleStockAction(index, actionType) {
+    window.handleStockAction = function(index, actionType) {
         const inputElem = document.getElementById(`input-${index}`);
         const val = parseFloat(inputElem.value);
         if (isNaN(val) || val <= 0) return alert("請輸入大於 0 的數量！");
@@ -215,10 +264,9 @@
             addLog(`📦 進貨入庫：【${item.name}】大倉增加 +${val} (大倉最新: ${item.freezerStock})`);
         }
 
-        saveData();
-        inputElem.value = '';
-        renderTable();
-    }
+        inputElem.value = ''; // 清空輸入框
+        saveDataToCloud();    // 儲存並觸發遠端更新，畫面會透過 onSnapshot 自動重新渲染
+    };
 
     function renderTable() {
         const tbody = document.getElementById('inventoryBody');
@@ -270,7 +318,6 @@
             '<div style="text-align:center; color:#bbb;">暫無紀錄</div>';
     }
 
-    renderTable();
 </script>
 </body>
 </html>
