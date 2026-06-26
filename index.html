@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>蔡叔叔比薩屋 - 雲端庫存系統</title>
-    <!-- 引入 Firebase SDK -->
+    <title>蔡叔叔比薩屋 - 雲端庫存管理系統</title>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // --- 請將此處替換為您的 Firebase 設定 ---
+        // --- 請將此處填入您的 Firebase Key ---
 const firebaseConfig = {
   apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",
   authDomain: "inv3-84f00.firebaseapp.com",
@@ -26,6 +25,7 @@ const firebaseConfig = {
         window.inventoryData = [];
         window.logs = [];
 
+        // 監聽雲端資料
         onSnapshot(docRef, (doc) => {
             if (doc.exists()) {
                 window.inventoryData = doc.data().items;
@@ -34,6 +34,7 @@ const firebaseConfig = {
             }
         });
 
+        // 雲端儲存函數
         window.saveToCloud = async (items, logs) => {
             await updateDoc(docRef, { items: items, logs: logs });
         };
@@ -63,14 +64,30 @@ const firebaseConfig = {
 <body>
 
 <div class="container">
-    <h1>🍕 蔡叔叔比薩屋 - 雲端庫存系統</h1>
+    <h1>🍕 蔡叔叔比薩屋 - 雲端庫存管理系統</h1>
     <div class="subtitle">※ 資料即時同步至雲端，多裝置共用。</div>
+
     <div class="alert-box" id="alertBox">
         <strong style="color: #c62828;">⚠️ 叫貨提醒：</strong> 以下大倉庫存過低，請安排叫貨！
         <ul id="alertList" style="margin-bottom: 0; padding-left: 20px; font-size: 14px;"></ul>
     </div>
 
-    <div class="filter-container" id="filterContainer"></div>
+    <div class="filter-container">
+        <button class="filter-btn active" onclick="filterCategory('全部')">全部</button>
+        <button class="filter-btn" onclick="filterCategory('肉類')">肉類</button>
+        <button class="filter-btn" onclick="filterCategory('海鮮')">海鮮</button>
+        <button class="filter-btn" onclick="filterCategory('臘腸')">臘腸</button>
+        <button class="filter-btn" onclick="filterCategory('薯條起司')">薯條起司</button>
+        <button class="filter-btn" onclick="filterCategory('蔬菜')">蔬菜</button>
+        <button class="filter-btn" onclick="filterCategory('罐頭類')">罐頭類</button>
+        <button class="filter-btn" onclick="filterCategory('飲料')">飲料</button>
+        <button class="filter-btn" onclick="filterCategory('粉')">粉</button>
+        <button class="filter-btn" onclick="filterCategory('醬料')">醬料</button>
+        <button class="filter-btn" onclick="filterCategory('外帶醬料')">外帶醬料</button>
+        <button class="filter-btn" onclick="filterCategory('包材')">包材</button>
+        <button class="filter-btn" onclick="filterCategory('衛生用品')">衛生用品</button>
+        <button class="filter-btn" onclick="filterCategory('清潔用品')">清潔用品</button>
+    </div>
 
     <table>
         <thead>
@@ -97,7 +114,7 @@ const firebaseConfig = {
 </div>
 
 <script>
-    // 完整的預設食材清單 (對應您 v0625.html 的原始結構)
+    // 原始食材清單
     const defaultData = [
         { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
         { id: 2, category: "肉類", name: "牛絞肉 (熟/800g包)", freezerStock: 4, chillerStock: 1, threshold: 5, unit: "包" },
@@ -119,7 +136,6 @@ const firebaseConfig = {
         { id: 15, category: "罐頭類", name: "玉米", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },
         { id: 16, category: "罐頭類", name: "洋菇", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },
         { id: 17, category: "罐頭類", name: "黑橄欖", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },
-        // 飲料項目
         { id: 70, category: "飲料", name: "茶葉", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "包" },
         { id: 71, category: "飲料", name: "小美冰淇淋", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "桶" },
         { id: 72, category: "飲料", name: "K冰淇淋", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "盒" },
@@ -171,16 +187,6 @@ const firebaseConfig = {
     ];
 
     let currentCategoryFilter = '全部';
-    const categories = ['全部', '肉類', '海鮮', '臘腸', '薯條起司', '蔬菜', '罐頭類', '飲料', '粉', '醬料', '外帶醬料', '包材', '衛生用品', '清潔用品'];
-
-    const fc = document.getElementById('filterContainer');
-    categories.forEach(cat => {
-        const btn = document.createElement('button');
-        btn.className = `filter-btn ${cat === '全部' ? 'active' : ''}`;
-        btn.textContent = cat;
-        btn.onclick = () => filterCategory(cat);
-        fc.appendChild(btn);
-    });
 
     function addLog(text) {
         const timeStr = new Date().toLocaleTimeString('zh-TW', {hour12: false});
@@ -255,7 +261,7 @@ const firebaseConfig = {
                     <td style="font-size:15px; font-weight:bold; color: ${isLow ? '#c62828' : '#455a64'};">${item.freezerStock} <small>${item.unit}</small></td>
                     <td>
                         <div class="action-group">
-                            <input type="number" id="input-${index}" class="qty-input" min="0" step="any" placeholder="數">
+                            <input type="number" id="input-${index}" class="qty-input" min="0" step="any" placeholder="數量">
                             <button class="btn-op btn-transfer" onclick="handleStockAction(${index}, 'transfer')">🔄 移至現場</button>
                             <button class="btn-op btn-consume" onclick="handleStockAction(${index}, 'consume')">－ 消耗</button>
                             <button class="btn-op btn-supplier" onclick="handleStockAction(${index}, 'supplier')">＋ 進貨</button>
