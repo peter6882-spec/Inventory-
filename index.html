@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>蔡叔叔比薩屋 - 庫存管理系統 (雲端版)</title>
+    <title>蔡叔叔比薩屋 - 庫存管理系統 (雲端升級版)</title>
     <style>
         :root { --primary-color: #2e7d32; --transfer-color: #0288d1; --danger-color: #c62828; --bg-color: #f4f6f8; }
         * { box-sizing: border-box; } body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg-color); padding: 20px; color: #333;}
@@ -34,7 +34,7 @@
 
 <div class="container">
     <h1>🍕 蔡叔叔比薩屋 - 雙溫層庫存管理</h1>
-    <div class="subtitle">※ 資料已連結至 Firebase 雲端，多台裝置可即時同步。</div>
+    <div class="subtitle">※ 資料已連結至 Firebase 雲端，支援離線快取與秒開同步。</div>
 
     <div class="alert-box" id="alertBox">
         <strong style="color: #c62828;">⚠️ 叫貨提醒：</strong> 以下大倉庫存過低，請安排叫貨！
@@ -71,7 +71,7 @@
             </tr>
         </thead>
         <tbody id="inventoryBody">
-            <tr><td colspan="7" class="loading-text">🔄 正在連接雲端資料庫，請稍候...</td></tr>
+            <tr><td colspan="7" class="loading-text">🔄 正在載入資料庫，請稍候...</td></tr>
         </tbody>
     </table>
 
@@ -85,14 +85,14 @@
 </div>
 
 <script type="module">
-    // 1. 引入 Firebase SDK
+    // 1. 引入 Firebase SDK (包含 enableIndexedDbPersistence 和 initializeFirestore)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { doc, setDoc, onSnapshot, initializeFirestore, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     // =========================================================================
     // ⚠️ 請在這裡貼上您 Firebase 專案的 Config 設定金鑰
     // =========================================================================
-const firebaseConfig = {
+ const firebaseConfig = {
   apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",
   authDomain: "inv3-84f00.firebaseapp.com",
   databaseURL: "https://inv3-84f00-default-rtdb.firebaseio.com",
@@ -101,15 +101,27 @@ const firebaseConfig = {
   messagingSenderId: "328169054973",
   appId: "1:328169054973:web:f23bb36d266b7719eed494"
 };
-
-    // 初始化 Firebase 與 Firestore
+    // 2. 初始化 Firebase
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+
+    // 3. 【加速關鍵】初始化 Firestore 時，強制跳過 30 秒等待 (使用 Long Polling)
+    const db = initializeFirestore(app, {
+        experimentalForceLongPolling: true
+    });
+
+    // 4. 【秒開關鍵】開啟離線快取
+    enableIndexedDbPersistence(db).catch((err) => {
+        if (err.code == 'failed-precondition') {
+            console.log("多個分頁開啟，無法啟用快取 (不影響基本功能)");
+        } else if (err.code == 'unimplemented') {
+            console.log("此瀏覽器不支援離線快取");
+        }
+    });
     
     // 指定資料庫存放的路徑 (集合名稱: inventory, 文件名稱: mainStore)
     const docRef = doc(db, "inventory", "mainStore");
 
-    // 預設資料 (與原本相同)
+    // 預設資料
     const defaultData = [
         { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
         { id: 2, category: "肉類", name: "牛絞肉 (熟/800g包)", freezerStock: 4, chillerStock: 1, threshold: 5, unit: "包" },
@@ -185,35 +197,31 @@ const firebaseConfig = {
     let logs = [];
     let currentCategoryFilter = '全部';
 
-    // 2. 監聽 Firestore 即時更新 (取代原來的 localStorage.getItem)
-    onSnapshot(docRef, (docSnap) => {
+    // 監聽 Firestore 即時更新 (包含離線快取支援)
+    onSnapshot(docRef, { includeMetadataChanges: true }, (docSnap) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
             inventoryData = data.items || defaultData;
             logs = data.logs || [];
         } else {
-            // 如果雲端完全沒有資料（第一次使用），就寫入預設資料
             inventoryData = defaultData;
             saveDataToCloud();
         }
         renderTable();
     }, (error) => {
         console.error("讀取資料失敗:", error);
-        document.getElementById('inventoryBody').innerHTML = `<tr><td colspan="7" class="loading-text" style="color:red;">❌ 無法連接到資料庫，請檢查 Firebase 設定或網路連線。</td></tr>`;
+        document.getElementById('inventoryBody').innerHTML = `<tr><td colspan="7" class="loading-text" style="color:red;">❌ 無法連接到資料庫，請檢查網路。</td></tr>`;
     });
 
-    // 3. 儲存資料到 Firestore (取代原來的 localStorage.setItem)
     function saveDataToCloud() {
         setDoc(docRef, {
             items: inventoryData,
             logs: logs,
             lastUpdated: new Date().toISOString()
         }).catch(error => {
-            alert("雲端儲存失敗，請檢查網路連線：" + error.message);
+            alert("資料儲存遇到問題，請稍後再試：" + error.message);
         });
     }
-
-    // ---------------- 以下為邏輯處理函式 ----------------
 
     function addLog(text) {
         const timeStr = new Date().toLocaleTimeString('zh-TW', {hour12: false});
@@ -222,7 +230,6 @@ const firebaseConfig = {
         saveDataToCloud();
     }
 
-    // 將函式掛載到 window，讓 HTML 的 onclick 可以呼叫到 (因為 module 作用域隔離)
     window.clearLogs = function() {
         if(confirm('確定要清除所有紀錄嗎？(所有連線設備都會被清除)')) {
             logs = [];
@@ -264,8 +271,8 @@ const firebaseConfig = {
             addLog(`📦 進貨入庫：【${item.name}】大倉增加 +${val} (大倉最新: ${item.freezerStock})`);
         }
 
-        inputElem.value = ''; // 清空輸入框
-        saveDataToCloud();    // 儲存並觸發遠端更新，畫面會透過 onSnapshot 自動重新渲染
+        inputElem.value = '';
+        saveDataToCloud();
     };
 
     function renderTable() {
