@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>蔡叔叔比薩屋 - 雲端庫存系統</title>
+    <!-- 引入 Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -96,10 +97,82 @@ const firebaseConfig = {
 </div>
 
 <script>
+    // 完整的預設食材清單 (對應您 v0625.html 的原始結構)
+    const defaultData = [
+        { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
+        { id: 2, category: "肉類", name: "牛絞肉 (熟/800g包)", freezerStock: 4, chillerStock: 1, threshold: 5, unit: "包" },
+        { id: 3, category: "海鮮", name: "蝦仁 (熟/800g包)", freezerStock: 8, chillerStock: 3, threshold: 4, unit: "包" },
+        { id: 4, category: "海鮮", name: "透抽 (熟/800g包)", freezerStock: 2, chillerStock: 1, threshold: 3, unit: "包" },
+        { id: 5, category: "海鮮", name: "珠貝 (熟/500g包)", freezerStock: 6, chillerStock: 2, threshold: 3, unit: "包" },
+        { id: 60, category: "海鮮", name: "蟹味棒", freezerStock: 5, chillerStock: 2, threshold: 3, unit: "包" },
+        { id: 6, category: "臘腸", name: "大臘腸", freezerStock: 15, chillerStock: 4, threshold: 6, unit: "包" },
+        { id: 7, category: "臘腸", name: "小臘腸", freezerStock: 5, chillerStock: 2, threshold: 4, unit: "袋" },
+        { id: 61, category: "臘腸", name: "火腿", freezerStock: 6, chillerStock: 2, threshold: 4, unit: "包" },
+        { id: 8, category: "薯條起司", name: "薯條", freezerStock: 3, chillerStock: 1, threshold: 5, unit: "袋" },
+        { id: 9, category: "薯條起司", name: "莫扎瑞拉", freezerStock: 8, chillerStock: 2, threshold: 4, unit: "包" },
+        { id: 62, category: "薯條起司", name: "起司", freezerStock: 8, chillerStock: 2, threshold: 4, unit: "包" },
+        { id: 10, category: "蔬菜", name: "番茄", freezerStock: 20, chillerStock: 5, threshold: 15, unit: "顆" },
+        { id: 11, category: "蔬菜", name: "洋蔥", freezerStock: 15, chillerStock: 4, threshold: 10, unit: "顆" },
+        { id: 12, category: "蔬菜", name: "青椒", freezerStock: 5, chillerStock: 2, threshold: 6, unit: "條" },
+        { id: 13, category: "蔬菜", name: "九層塔", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "兩" },
+        { id: 14, category: "罐頭類", name: "鳳梨", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },
+        { id: 15, category: "罐頭類", name: "玉米", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },
+        { id: 16, category: "罐頭類", name: "洋菇", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },
+        { id: 17, category: "罐頭類", name: "黑橄欖", freezerStock: 12, chillerStock: 2, threshold: 5, unit: "罐" },
+        // 飲料項目
+        { id: 70, category: "飲料", name: "茶葉", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "包" },
+        { id: 71, category: "飲料", name: "小美冰淇淋", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "桶" },
+        { id: 72, category: "飲料", name: "K冰淇淋", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "盒" },
+        { id: 73, category: "飲料", name: "冷凍草莓", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "包" },
+        { id: 74, category: "飲料", name: "可可粉", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "包" },
+        { id: 75, category: "飲料", name: "鮮奶", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "瓶" },
+        { id: 18, category: "粉", name: "鬆厚預拌粉", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
+        { id: 19, category: "粉", name: "薄脆預拌粉", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
+        { id: 20, category: "粉", name: "比薩香料粉", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
+        { id: 21, category: "粉", name: "義式香腸粉", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
+        { id: 22, category: "粉", name: "雞肉醃漬粉", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
+        { id: 23, category: "粉", name: "雞肉裹粉P100", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
+        { id: 24, category: "粉", name: "雞肉裹粉Q50", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
+        { id: 25, category: "粉", name: "雞肉裹粉R0", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "包" },
+        { id: 26, category: "醬料", name: "番茄醬 (袋裝)", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "袋" },
+        { id: 27, category: "醬料", name: "番茄醬 (瓶裝)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "瓶" },
+        { id: 28, category: "醬料", name: "Tabasco", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "瓶" },
+        { id: 29, category: "醬料", name: "BB辣椒醬", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "瓶" },
+        { id: 30, category: "外帶醬料", name: "外帶番茄醬", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },
+        { id: 31, category: "外帶醬料", name: "外帶黑胡椒", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },
+        { id: 32, category: "外帶醬料", name: "外帶乾辣椒", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },
+        { id: 33, category: "外帶醬料", name: "外帶辣椒粉", freezerStock: 50, chillerStock: 10, threshold: 20, unit: "袋" },
+        { id: 34, category: "包材", name: "12吋比薩盒", freezerStock: 20, chillerStock: 5, threshold: 10, unit: "包" },
+        { id: 35, category: "包材", name: "9吋比薩盒", freezerStock: 20, chillerStock: 5, threshold: 10, unit: "包" },
+        { id: 36, category: "包材", name: "比薩紙", freezerStock: 15, chillerStock: 3, threshold: 5, unit: "包" },
+        { id: 37, category: "包材", name: "大炸雞盒", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "箱" },
+        { id: 38, category: "包材", name: "小炸雞盒", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "箱" },
+        { id: 39, category: "包材", name: "吸油紙", freezerStock: 15, chillerStock: 3, threshold: 5, unit: "包" },
+        { id: 40, category: "包材", name: "冷飲杯+蓋", freezerStock: 30, chillerStock: 5, threshold: 10, unit: "條" },
+        { id: 41, category: "包材", name: "熱飲杯+蓋", freezerStock: 30, chillerStock: 5, threshold: 10, unit: "條" },
+        { id: 42, category: "包材", name: "大背心提袋", freezerStock: 20, chillerStock: 5, threshold: 5, unit: "包" },
+        { id: 43, category: "包材", name: "中背心提袋", freezerStock: 20, chillerStock: 5, threshold: 5, unit: "包" },
+        { id: 44, category: "包材", name: "小背心提袋", freezerStock: 20, chillerStock: 5, threshold: 5, unit: "包" },
+        { id: 45, category: "包材", name: "2杯架", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "包" },
+        { id: 46, category: "包材", name: "4杯架", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "包" },
+        { id: 47, category: "衛生用品", name: "廚房紙巾", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "袋" },
+        { id: 48, category: "衛生用品", name: "烘培紙", freezerStock: 8, chillerStock: 2, threshold: 3, unit: "條" },
+        { id: 49, category: "衛生用品", name: "桌上衛生紙", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
+        { id: 50, category: "衛生用品", name: "折疊紙巾", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
+        { id: 51, category: "衛生用品", name: "捲筒衛生紙", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
+        { id: 52, category: "衛生用品", name: "濕紙巾", freezerStock: 5, chillerStock: 1, threshold: 2, unit: "箱" },
+        { id: 53, category: "衛生用品", name: "廚房手套S", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },
+        { id: 54, category: "衛生用品", name: "廚房手套", freezerStock: 6, chillerStock: 2, threshold: 2, unit: "盒" },
+        { id: 55, category: "衛生用品", name: "一次性手套", freezerStock: 10, chillerStock: 2, threshold: 3, unit: "袋" },
+        { id: 56, category: "清潔用品", name: "地板清潔劑", freezerStock: 3, chillerStock: 1, threshold: 1, unit: "桶" },
+        { id: 57, category: "清潔用品", name: "洗碗精", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" },
+        { id: 58, category: "清潔用品", name: "洗手乳", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" },
+        { id: 59, category: "清潔用品", name: "洗手液", freezerStock: 4, chillerStock: 1, threshold: 1, unit: "桶" }
+    ];
+
     let currentCategoryFilter = '全部';
     const categories = ['全部', '肉類', '海鮮', '臘腸', '薯條起司', '蔬菜', '罐頭類', '飲料', '粉', '醬料', '外帶醬料', '包材', '衛生用品', '清潔用品'];
 
-    // 初始化過濾按鈕
     const fc = document.getElementById('filterContainer');
     categories.forEach(cat => {
         const btn = document.createElement('button');
