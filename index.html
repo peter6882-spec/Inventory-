@@ -78,10 +78,7 @@
     <div style="margin-top:30px; border-top: 2px dashed #ddd; padding-top: 15px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <strong style="color: #555;">🕒 異動日誌</strong>
-            <div>
-                <button onclick="forceResetCloudData()" style="background:#e65100; border:none; color:white; padding: 5px 10px; border-radius:4px; cursor:pointer; font-size:13px; font-weight:bold; margin-right:15px;">⚠️ 強制同步新項目至雲端</button>
-                <button onclick="clearLogs()" style="background:none; border:none; color:#888; text-decoration:underline; cursor:pointer;">清除紀錄</button>
-            </div>
+            <button onclick="clearLogs()" style="background:none; border:none; color:#888; text-decoration:underline; cursor:pointer;">清除紀錄</button>
         </div>
         <div class="log-container" id="logContainer"></div>
     </div>
@@ -114,7 +111,7 @@
     // 4. 開啟離線快取
     enableIndexedDbPersistence(db).catch((err) => {
         if (err.code == 'failed-precondition') {
-            console.log("多個分頁開啟，無法啟用快取");
+            console.log("多個分頁開啟，無法啟用快取 (不影響基本功能)");
         } else if (err.code == 'unimplemented') {
             console.log("此瀏覽器不支援離線快取");
         }
@@ -123,7 +120,7 @@
     // 指定資料庫存放的路徑
     const docRef = doc(db, "inventory", "mainStore");
 
-    // 預設資料 (已加入全新生鮮項目)
+    // 【基準品項清單】已加入新版的生鮮食材
     const defaultData = [
         { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
         { id: 80, category: "肉類", name: "豬絞肉 (生/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
@@ -204,12 +201,35 @@
     let logs = [];
     let currentCategoryFilter = '全部';
 
-    // 監聽 Firestore 即時更新
+    // 【核心修正】監聽 Firestore 並實作「智能保留庫存並補齊新品項」
     onSnapshot(docRef, { includeMetadataChanges: true }, (docSnap) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
-            inventoryData = data.items || defaultData;
+            const cloudItems = data.items || [];
+            let needsCloudUpdate = false;
+            
+            // 系統智能比對：以 defaultData (含新品項) 為基準
+            inventoryData = defaultData.map(defItem => {
+                // 去找雲端上是不是已經有這個項目 (比對 ID)
+                const existingItem = cloudItems.find(ci => ci.id === defItem.id);
+                
+                if (existingItem) {
+                    // 如果雲端已經有，保留雲端現有的真實庫存數量！不會被預設值洗掉
+                    return existingItem;
+                } else {
+                    // 如果雲端沒有這個品項 (表示是剛新增的生鮮品項)，我們把它補進去
+                    needsCloudUpdate = true;
+                    return defItem;
+                }
+            });
+
             logs = data.logs || [];
+
+            // 如果偵測到有補齊新的品項，自動上傳更新到雲端，不用人工手動按！
+            if (needsCloudUpdate) {
+                saveDataToCloud();
+            }
+
         } else {
             inventoryData = defaultData;
             saveDataToCloud();
@@ -229,22 +249,6 @@
             alert("資料儲存遇到問題，請稍後再試：" + error.message);
         });
     }
-
-    // 新增：強制覆蓋雲端資料的函式
-    window.forceResetCloudData = function() {
-        if(confirm('確定要將全新預設品項（包含剛新增的生鮮品項）同步至雲端嗎？\n注意：這會將所有品項的庫存數字重置回初始預設值！')) {
-            setDoc(docRef, {
-                items: defaultData,
-                logs: [{ time: new Date().toLocaleTimeString('zh-TW', {hour12: false}), text: "🔄 執行管理員強制重置，成功同步新版生鮮品項清單。" }],
-                lastUpdated: new Date().toISOString()
-            }).then(() => {
-                alert("雲端資料同步成功！頁面將自動重新整理。");
-                location.reload();
-            }).catch(error => {
-                alert("同步失敗，請檢查網路：" + error.message);
-            });
-        }
-    };
 
     function addLog(text) {
         const timeStr = new Date().toLocaleTimeString('zh-TW', {hour12: false});
