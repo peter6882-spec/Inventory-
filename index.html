@@ -133,7 +133,9 @@
 
     // 3. 初始化 Firestore（新版離線快取 + 多分頁/多裝置同步管理）
     const db = initializeFirestore(app, {
-        experimentalForceLongPolling: true,
+        // 改用「自動偵測」連線方式，而非強制長輪詢。
+        // 強制長輪詢在部分行動網路下會讓即時連線停在半連線狀態，導致同步狀態卡住。
+        experimentalAutoDetectLongPolling: true,
         localCache: persistentLocalCache({
             tabManager: persistentMultipleTabManager()
         })
@@ -258,9 +260,19 @@
 
     // 監聽 Firestore 即時更新
     onSnapshot(docRef, { includeMetadataChanges: true }, (docSnap) => {
-        // 連線正常：解除鎖定。依 hasPendingWrites 顯示「同步中／已同步」
+        // 連線正常：解除鎖定。
         setLocked(false);
-        setSyncStatus(docSnap.metadata.hasPendingWrites ? 'syncing' : 'synced');
+        const meta = docSnap.metadata;
+        if (meta.hasPendingWrites) {
+            // 你剛改的東西還沒送達雲端
+            setSyncStatus('syncing');
+        } else if (meta.fromCache) {
+            // 資料還只來自本地快取，尚未與伺服器確認 → 仍在同步中
+            setSyncStatus('syncing');
+        } else {
+            // 來自伺服器、且沒有待寫入 → 真正與雲端一致
+            setSyncStatus('synced');
+        }
 
         if (docSnap.exists()) {
             const data = docSnap.data();
