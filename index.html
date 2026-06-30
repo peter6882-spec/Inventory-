@@ -120,7 +120,7 @@
     // 指定資料庫存放的路徑
     const docRef = doc(db, "inventory", "mainStore");
 
-    // 【基準品項清單】已加入新版的生鮮食材
+    // 【新版基準品項清單】
     const defaultData = [
         { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
         { id: 80, category: "肉類", name: "豬絞肉 (生/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
@@ -201,36 +201,38 @@
     let logs = [];
     let currentCategoryFilter = '全部';
 
-    // 【核心修正】監聽 Firestore 並實作「智能保留庫存並補齊新品項」
-    onSnapshot(docRef, { includeMetadataChanges: true }, (docSnap) => {
+    // 監聽 Firestore 即時更新
+    onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
             const cloudItems = data.items || [];
-            let needsCloudUpdate = false;
             
-            // 系統智能比對：以 defaultData (含新品項) 為基準
-            inventoryData = defaultData.map(defItem => {
-                // 去找雲端上是不是已經有這個項目 (比對 ID)
-                const existingItem = cloudItems.find(ci => ci.id === defItem.id);
+            // 💡 智能檢查：找出哪些「新加入的生鮮品項」不在目前的雲端資料庫中
+            const missingItems = defaultData.filter(defItem => !cloudItems.some(ci => ci.id === defItem.id));
+            
+            if (missingItems.length > 0) {
+                // 將現有的雲端真實庫存，與缺少的生鮮品項進行安全合併
+                inventoryData = [...cloudItems, ...missingItems];
                 
-                if (existingItem) {
-                    // 如果雲端已經有，保留雲端現有的真實庫存數量！不會被預設值洗掉
-                    return existingItem;
-                } else {
-                    // 如果雲端沒有這個品項 (表示是剛新增的生鮮品項)，我們把它補進去
-                    needsCloudUpdate = true;
-                    return defItem;
+                // 依據 defaultData 的順序進行重排，確保排序整齊美觀
+                inventoryData.sort((a, b) => {
+                    const indexA = defaultData.findIndex(d => d.id === a.id);
+                    const indexB = defaultData.findIndex(d => d.id === b.id);
+                    return indexA - indexB;
+                });
+                
+                // 🚨 終極防護網：只有當資料確認來自「雲端伺服器最新狀態」（非本地舊快取載入時），才安全寫入雲端
+                if (!docSnap.metadata.fromCache && !docSnap.metadata.hasPendingWrites) {
+                    saveDataToCloud();
                 }
-            });
-
-            logs = data.logs || [];
-
-            // 如果偵測到有補齊新的品項，自動上傳更新到雲端，不用人工手動按！
-            if (needsCloudUpdate) {
-                saveDataToCloud();
+            } else {
+                // 如果雲端品項已經齊全，直接使用雲端的最新即時庫存資料
+                inventoryData = cloudItems;
             }
-
+            
+            logs = data.logs || [];
         } else {
+            // 如果雲端完全空白（第一次使用），才全面上傳預設資料
             inventoryData = defaultData;
             saveDataToCloud();
         }
