@@ -26,7 +26,7 @@
         .low-stock { background-color: #fff8f8; }
         .alert-box { background-color: #ffebee; border-left: 5px solid #c62828; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: none; }
         
-        /* 新增載入中狀態的樣式 */
+        /* 載入中狀態的樣式 */
         .loading-text { text-align: center; padding: 30px; font-size: 18px; color: #666; }
     </style>
 </head>
@@ -78,20 +78,21 @@
     <div style="margin-top:30px; border-top: 2px dashed #ddd; padding-top: 15px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <strong style="color: #555;">🕒 異動日誌</strong>
-            <button onclick="clearLogs()" style="background:none; border:none; color:#888; text-decoration:underline; cursor:pointer;">清除紀錄</button>
+            <div>
+                <button onclick="forceResetCloudData()" style="background:#e65100; border:none; color:white; padding: 5px 10px; border-radius:4px; cursor:pointer; font-size:13px; font-weight:bold; margin-right:15px;">⚠️ 強制同步新項目至雲端</button>
+                <button onclick="clearLogs()" style="background:none; border:none; color:#888; text-decoration:underline; cursor:pointer;">清除紀錄</button>
+            </div>
         </div>
         <div class="log-container" id="logContainer"></div>
     </div>
 </div>
 
 <script type="module">
-    // 1. 引入 Firebase SDK (包含 enableIndexedDbPersistence 和 initializeFirestore)
+    // 1. 引入 Firebase SDK
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { doc, setDoc, onSnapshot, initializeFirestore, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // =========================================================================
-    // ⚠️ 請在這裡貼上您 Firebase 專案的 Config 設定金鑰
-    // =========================================================================
+    // Firebase 專案 Config 設定金鑰
     const firebaseConfig = {
         apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",
         authDomain: "inv3-84f00.firebaseapp.com",
@@ -101,27 +102,28 @@
         messagingSenderId: "328169054973",
         appId: "1:328169054973:web:f23bb36d266b7719eed494"
     };
+    
     // 2. 初始化 Firebase
     const app = initializeApp(firebaseConfig);
 
-    // 3. 【加速關鍵】初始化 Firestore 時，強制跳過 30 秒等待 (使用 Long Polling)
+    // 3. 初始化 Firestore
     const db = initializeFirestore(app, {
         experimentalForceLongPolling: true
     });
 
-    // 4. 【秒開關鍵】開啟離線快取
+    // 4. 開啟離線快取
     enableIndexedDbPersistence(db).catch((err) => {
         if (err.code == 'failed-precondition') {
-            console.log("多個分頁開啟，無法啟用快取 (不影響基本功能)");
+            console.log("多個分頁開啟，無法啟用快取");
         } else if (err.code == 'unimplemented') {
             console.log("此瀏覽器不支援離線快取");
         }
     });
     
-    // 指定資料庫存放的路徑 (集合名稱: inventory, 文件名稱: mainStore)
+    // 指定資料庫存放的路徑
     const docRef = doc(db, "inventory", "mainStore");
 
-    // 預設資料
+    // 預設資料 (已加入全新生鮮項目)
     const defaultData = [
         { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
         { id: 80, category: "肉類", name: "豬絞肉 (生/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
@@ -202,7 +204,7 @@
     let logs = [];
     let currentCategoryFilter = '全部';
 
-    // 監聽 Firestore 即時更新 (包含離線快取支援)
+    // 監聽 Firestore 即時更新
     onSnapshot(docRef, { includeMetadataChanges: true }, (docSnap) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
@@ -227,6 +229,22 @@
             alert("資料儲存遇到問題，請稍後再試：" + error.message);
         });
     }
+
+    // 新增：強制覆蓋雲端資料的函式
+    window.forceResetCloudData = function() {
+        if(confirm('確定要將全新預設品項（包含剛新增的生鮮品項）同步至雲端嗎？\n注意：這會將所有品項的庫存數字重置回初始預設值！')) {
+            setDoc(docRef, {
+                items: defaultData,
+                logs: [{ time: new Date().toLocaleTimeString('zh-TW', {hour12: false}), text: "🔄 執行管理員強制重置，成功同步新版生鮮品項清單。" }],
+                lastUpdated: new Date().toISOString()
+            }).then(() => {
+                alert("雲端資料同步成功！頁面將自動重新整理。");
+                location.reload();
+            }).catch(error => {
+                alert("同步失敗，請檢查網路：" + error.message);
+            });
+        }
+    };
 
     function addLog(text) {
         const timeStr = new Date().toLocaleTimeString('zh-TW', {hour12: false});
