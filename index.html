@@ -92,15 +92,15 @@
     // =========================================================================
     // ⚠️ 請在這裡貼上您 Firebase 專案的 Config 設定金鑰
     // =========================================================================
- const firebaseConfig = {
-  apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",
-  authDomain: "inv3-84f00.firebaseapp.com",
-  databaseURL: "https://inv3-84f00-default-rtdb.firebaseio.com",
-  projectId: "inv3-84f00",
-  storageBucket: "inv3-84f00.firebasestorage.app",
-  messagingSenderId: "328169054973",
-  appId: "1:328169054973:web:f23bb36d266b7719eed494"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",
+        authDomain: "inv3-84f00.firebaseapp.com",
+        databaseURL: "https://inv3-84f00-default-rtdb.firebaseio.com",
+        projectId: "inv3-84f00",
+        storageBucket: "inv3-84f00.firebasestorage.app",
+        messagingSenderId: "328169054973",
+        appId: "1:328169054973:web:f23bb36d266b7719eed494"
+    };
     // 2. 初始化 Firebase
     const app = initializeApp(firebaseConfig);
 
@@ -124,10 +124,15 @@
     // 預設資料
     const defaultData = [
         { id: 1, category: "肉類", name: "豬絞肉 (熟/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
+        { id: 80, category: "肉類", name: "豬絞肉 (生/800g包)", freezerStock: 10, chillerStock: 2, threshold: 5, unit: "包" },
         { id: 2, category: "肉類", name: "牛絞肉 (熟/800g包)", freezerStock: 4, chillerStock: 1, threshold: 5, unit: "包" },
+        { id: 81, category: "肉類", name: "牛絞肉 (生/800g包)", freezerStock: 4, chillerStock: 1, threshold: 5, unit: "包" },
         { id: 3, category: "海鮮", name: "蝦仁 (熟/800g包)", freezerStock: 8, chillerStock: 3, threshold: 4, unit: "包" },
+        { id: 82, category: "海鮮", name: "蝦仁 (生/800g包)", freezerStock: 8, chillerStock: 3, threshold: 4, unit: "包" },
         { id: 4, category: "海鮮", name: "透抽 (熟/800g包)", freezerStock: 2, chillerStock: 1, threshold: 3, unit: "包" },
+        { id: 83, category: "海鮮", name: "透抽 (生/800g包)", freezerStock: 2, chillerStock: 1, threshold: 3, unit: "包" },
         { id: 5, category: "海鮮", name: "珠貝 (熟/500g包)", freezerStock: 6, chillerStock: 2, threshold: 3, unit: "包" },
+        { id: 84, category: "海鮮", name: "珠貝 (生/500g包)", freezerStock: 6, chillerStock: 2, threshold: 3, unit: "包" },
         { id: 60, category: "海鮮", name: "蟹味棒", freezerStock: 5, chillerStock: 2, threshold: 3, unit: "包" },
         { id: 6, category: "臘腸", name: "大臘腸", freezerStock: 15, chillerStock: 4, threshold: 6, unit: "包" },
         { id: 7, category: "臘腸", name: "小臘腸", freezerStock: 5, chillerStock: 2, threshold: 4, unit: "袋" },
