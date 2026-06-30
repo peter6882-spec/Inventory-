@@ -29,14 +29,22 @@
         /* 載入中狀態的樣式 */
         .loading-text { text-align: center; padding: 30px; font-size: 18px; color: #666; }
 
-        /* 離線僅供檢視橫幅 */
-        .offline-banner {
-            background-color: #b71c1c; color: #fff; text-align: center;
-            padding: 12px; border-radius: 8px; margin-bottom: 18px;
-            font-size: 15px; font-weight: bold; display: none;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        /* 同步狀態小膠囊（同步中 / 已同步 / 連線失敗） */
+        .sync-status {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 14px; border-radius: 20px; font-size: 13px;
+            font-weight: bold; margin: 0 auto 16px; transition: all 0.3s;
         }
-        /* 離線時鎖定的元件外觀 */
+        .sync-status .dot { width: 9px; height: 9px; border-radius: 50%; }
+        .sync-syncing { background: #fff3e0; color: #e65100; }
+        .sync-syncing .dot { background: #fb8c00; animation: pulse 1s infinite; }
+        .sync-synced  { background: #e8f5e9; color: #2e7d32; }
+        .sync-synced  .dot { background: #43a047; }
+        .sync-failed  { background: #ffebee; color: #b71c1c; }
+        .sync-failed  .dot { background: #c62828; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* 真正連線失敗時，鎖定編輯元件的外觀 */
         body.is-offline .btn-op,
         body.is-offline .qty-input,
         body.is-offline input[type="number"] {
@@ -50,8 +58,10 @@
     <h1>🍕 蔡叔叔比薩屋 - 雙溫層庫存管理</h1>
     <div class="subtitle">※ 資料已連結至 Firebase 雲端，支援離線快取與秒開同步。</div>
 
-    <div class="offline-banner" id="offlineBanner">
-        📴 目前離線（與雲端失去連線）— 僅供檢視，暫停所有編輯，以免資料未真正寫入。連線恢復後將自動解鎖。
+    <div style="text-align:center;">
+        <div class="sync-status sync-syncing" id="syncStatus">
+            <span class="dot"></span><span id="syncText">同步中…</span>
+        </div>
     </div>
 
     <div class="alert-box" id="alertBox">
@@ -212,21 +222,35 @@
     let inventoryData = [];
     let logs = [];
     let currentCategoryFilter = '全部';
-    let isOffline = false; // 由 Firestore 快照的 fromCache 判定；true 時鎖定所有編輯
+    let isOffline = false; // 只有 onSnapshot 真的回報連線錯誤時才設為 true，並鎖定編輯
 
-    // 設定離線狀態：切換橫幅、body class，並重繪表格以套用按鈕鎖定
-    function setOfflineState(offline) {
-        if (offline === isOffline) return;
-        isOffline = offline;
-        document.body.classList.toggle('is-offline', offline);
-        document.getElementById('offlineBanner').style.display = offline ? 'block' : 'none';
+    // 三段式同步狀態：'syncing' 同步中｜'synced' 已同步｜'failed' 連線失敗
+    function setSyncStatus(state) {
+        const el = document.getElementById('syncStatus');
+        const txt = document.getElementById('syncText');
+        if (!el) return;
+        el.classList.remove('sync-syncing', 'sync-synced', 'sync-failed');
+        if (state === 'syncing') {
+            el.classList.add('sync-syncing'); txt.textContent = '同步中…';
+        } else if (state === 'synced') {
+            el.classList.add('sync-synced'); txt.textContent = '✓ 已同步';
+        } else {
+            el.classList.add('sync-failed'); txt.textContent = '⚠ 連線失敗，僅供檢視';
+        }
+    }
+
+    // 設定是否鎖定編輯（只有連線失敗時才鎖）
+    function setLocked(locked) {
+        if (locked === isOffline) return;
+        isOffline = locked;
+        document.body.classList.toggle('is-offline', locked);
         renderTable();
     }
 
-    // 編輯前的統一守門：離線時擋下並提示
+    // 編輯前的統一守門：連線失敗時擋下並提示
     function guardOnline() {
         if (isOffline) {
-            alert("⚠️ 目前離線，無法編輯。\n請等待右上方連線恢復後再操作，以免庫存沒有真正寫入雲端。");
+            alert("⚠️ 目前與雲端連線失敗，無法編輯。\n請確認網路後重試，以免庫存沒有真正寫入。");
             return false;
         }
         return true;
@@ -234,8 +258,9 @@
 
     // 監聽 Firestore 即時更新
     onSnapshot(docRef, { includeMetadataChanges: true }, (docSnap) => {
-        // fromCache=true 代表這份資料來自本地快取（與伺服器失去連線）→ 視為離線
-        setOfflineState(docSnap.metadata.fromCache);
+        // 連線正常：解除鎖定。依 hasPendingWrites 顯示「同步中／已同步」
+        setLocked(false);
+        setSyncStatus(docSnap.metadata.hasPendingWrites ? 'syncing' : 'synced');
 
         if (docSnap.exists()) {
             const data = docSnap.data();
@@ -284,7 +309,12 @@
         renderTable();
     }, (error) => {
         console.error("讀取資料失敗:", error);
-        document.getElementById('inventoryBody').innerHTML = `<tr><td colspan="7" class="loading-text" style="color:red;">❌ 無法連接到資料庫，請檢查網路。</td></tr>`;
+        setSyncStatus('failed');
+        setLocked(true);
+        // 若連一筆資料都還沒載到，才顯示錯誤畫面；已有資料則保留可檢視
+        if (inventoryData.length === 0) {
+            document.getElementById('inventoryBody').innerHTML = `<tr><td colspan="7" class="loading-text" style="color:red;">❌ 無法連接到資料庫，請檢查網路。</td></tr>`;
+        }
     });
 
     // 一般性整包寫入：只用於「首次建立預設資料」與「補齊缺漏品項」等低頻、非即時數值操作
