@@ -28,6 +28,20 @@
         
         /* 載入中狀態的樣式 */
         .loading-text { text-align: center; padding: 30px; font-size: 18px; color: #666; }
+
+        /* 離線僅供檢視橫幅 */
+        .offline-banner {
+            background-color: #b71c1c; color: #fff; text-align: center;
+            padding: 12px; border-radius: 8px; margin-bottom: 18px;
+            font-size: 15px; font-weight: bold; display: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        /* 離線時鎖定的元件外觀 */
+        body.is-offline .btn-op,
+        body.is-offline .qty-input,
+        body.is-offline input[type="number"] {
+            opacity: 0.45; cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -35,6 +49,10 @@
 <div class="container">
     <h1>🍕 蔡叔叔比薩屋 - 雙溫層庫存管理</h1>
     <div class="subtitle">※ 資料已連結至 Firebase 雲端，支援離線快取與秒開同步。</div>
+
+    <div class="offline-banner" id="offlineBanner">
+        📴 目前離線（與雲端失去連線）— 僅供檢視，暫停所有編輯，以免資料未真正寫入。連線恢復後將自動解鎖。
+    </div>
 
     <div class="alert-box" id="alertBox">
         <strong style="color: #c62828;">⚠️ 叫貨提醒：</strong> 以下大倉庫存過低，請安排叫貨！
@@ -87,7 +105,7 @@
 <script type="module">
     // 1. 引入 Firebase SDK
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { doc, setDoc, onSnapshot, initializeFirestore, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { doc, setDoc, onSnapshot, runTransaction, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     // Firebase 專案 Config 設定金鑰
     const firebaseConfig = {
@@ -103,18 +121,12 @@
     // 2. 初始化 Firebase
     const app = initializeApp(firebaseConfig);
 
-    // 3. 初始化 Firestore
+    // 3. 初始化 Firestore（新版離線快取 + 多分頁/多裝置同步管理）
     const db = initializeFirestore(app, {
-        experimentalForceLongPolling: true
-    });
-
-    // 4. 開啟離線快取
-    enableIndexedDbPersistence(db).catch((err) => {
-        if (err.code == 'failed-precondition') {
-            console.log("多個分頁開啟，無法啟用快取 (不影響基本功能)");
-        } else if (err.code == 'unimplemented') {
-            console.log("此瀏覽器不支援離線快取");
-        }
+        experimentalForceLongPolling: true,
+        localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager()
+        })
     });
     
     // 指定資料庫存放的路徑
@@ -200,9 +212,31 @@
     let inventoryData = [];
     let logs = [];
     let currentCategoryFilter = '全部';
+    let isOffline = false; // 由 Firestore 快照的 fromCache 判定；true 時鎖定所有編輯
+
+    // 設定離線狀態：切換橫幅、body class，並重繪表格以套用按鈕鎖定
+    function setOfflineState(offline) {
+        if (offline === isOffline) return;
+        isOffline = offline;
+        document.body.classList.toggle('is-offline', offline);
+        document.getElementById('offlineBanner').style.display = offline ? 'block' : 'none';
+        renderTable();
+    }
+
+    // 編輯前的統一守門：離線時擋下並提示
+    function guardOnline() {
+        if (isOffline) {
+            alert("⚠️ 目前離線，無法編輯。\n請等待右上方連線恢復後再操作，以免庫存沒有真正寫入雲端。");
+            return false;
+        }
+        return true;
+    }
 
     // 監聽 Firestore 即時更新
-    onSnapshot(docRef, (docSnap) => {
+    onSnapshot(docRef, { includeMetadataChanges: true }, (docSnap) => {
+        // fromCache=true 代表這份資料來自本地快取（與伺服器失去連線）→ 視為離線
+        setOfflineState(docSnap.metadata.fromCache);
+
         if (docSnap.exists()) {
             const data = docSnap.data();
             const cloudItems = data.items || [];
@@ -213,17 +247,28 @@
             if (missingItems.length > 0) {
                 // 將現有的雲端真實庫存，與缺少的生鮮品項進行安全合併
                 inventoryData = [...cloudItems, ...missingItems];
-                
+
                 // 依據 defaultData 的順序進行重排，確保排序整齊美觀
                 inventoryData.sort((a, b) => {
                     const indexA = defaultData.findIndex(d => d.id === a.id);
                     const indexB = defaultData.findIndex(d => d.id === b.id);
                     return indexA - indexB;
                 });
-                
-                // 🚨 終極防護網：只有當資料確認來自「雲端伺服器最新狀態」（非本地舊快取載入時），才安全寫入雲端
+
+                // 🚨 只在「確認為雲端最新狀態」時補齊缺漏品項。
+                // 改用交易合併：只「補進」缺少的品項，絕不覆蓋既有品項的現有庫存數值，
+                // 避免與其他裝置正在進行的庫存交易互相蓋掉。
                 if (!docSnap.metadata.fromCache && !docSnap.metadata.hasPendingWrites) {
-                    saveDataToCloud();
+                    runStockTransaction((items) => {
+                        const toAdd = defaultData.filter(def => !items.some(i => i.id === def.id));
+                        if (toAdd.length === 0) return false; // 已被別台補齊，免寫
+                        items.push(...toAdd);
+                        items.sort((a, b) => {
+                            const ia = defaultData.findIndex(d => d.id === a.id);
+                            const ib = defaultData.findIndex(d => d.id === b.id);
+                            return ia - ib;
+                        });
+                    });
                 }
             } else {
                 // 如果雲端品項已經齊全，直接使用雲端的最新即時庫存資料
@@ -242,6 +287,7 @@
         document.getElementById('inventoryBody').innerHTML = `<tr><td colspan="7" class="loading-text" style="color:red;">❌ 無法連接到資料庫，請檢查網路。</td></tr>`;
     });
 
+    // 一般性整包寫入：只用於「首次建立預設資料」與「補齊缺漏品項」等低頻、非即時數值操作
     function saveDataToCloud() {
         setDoc(docRef, {
             items: inventoryData,
@@ -252,17 +298,43 @@
         });
     }
 
-    function addLog(text) {
-        const timeStr = new Date().toLocaleTimeString('zh-TW', {hour12: false});
-        logs.unshift({ time: timeStr, text: text });
-        if (logs.length > 50) logs.pop(); 
-        saveDataToCloud();
+    // 🔒 原子性交易：所有會改動庫存數值的操作都走這裡
+    // mutate(items, logs) 會在「讀到雲端最新值」之後才執行，回傳 false 可中止交易
+    async function runStockTransaction(mutate) {
+        try {
+            await runTransaction(db, async (tx) => {
+                const snap = await tx.get(docRef);
+                const data = snap.exists() ? snap.data() : { items: [], logs: [] };
+                const items = data.items || [];
+                let txLogs = data.logs || [];
+
+                const result = mutate(items, txLogs);
+                if (result === false) return; // 由 mutate 內部負責提示並中止
+
+                if (txLogs.length > 50) txLogs = txLogs.slice(0, 50);
+
+                tx.set(docRef, {
+                    items: items,
+                    logs: txLogs,
+                    lastUpdated: new Date().toISOString()
+                });
+            });
+        } catch (error) {
+            alert("操作未完成（可能因其他裝置同時操作），請再試一次：" + error.message);
+        }
+    }
+
+    function pushLog(txLogs, text) {
+        const timeStr = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+        txLogs.unshift({ time: timeStr, text: text });
     }
 
     window.clearLogs = function() {
+        if (!guardOnline()) return;
         if(confirm('確定要清除所有紀錄嗎？(所有連線設備都會被清除)')) {
-            logs = [];
-            saveDataToCloud();
+            runStockTransaction((items, txLogs) => {
+                txLogs.length = 0;
+            });
         }
     };
 
@@ -274,34 +346,42 @@
         renderTable();
     };
 
-    window.updateThreshold = function(index, newVal) {
-        inventoryData[index].threshold = parseFloat(newVal) || 0;
-        saveDataToCloud();
+    window.updateThreshold = function(id, newVal) {
+        if (!guardOnline()) { renderTable(); return; } // 還原輸入框顯示
+        const parsed = parseFloat(newVal) || 0;
+        runStockTransaction((items) => {
+            const it = items.find(i => i.id === id);
+            if (!it) return false;
+            it.threshold = parsed;
+        });
     };
 
-    window.handleStockAction = function(index, actionType) {
-        const inputElem = document.getElementById(`input-${index}`);
+    window.handleStockAction = function(id, actionType) {
+        if (!guardOnline()) return;
+        const inputElem = document.getElementById(`input-${id}`);
         const val = parseFloat(inputElem.value);
         if (isNaN(val) || val <= 0) return alert("請輸入大於 0 的數量！");
-        
-        const item = inventoryData[index];
 
-        if (actionType === 'transfer') {
-            if (item.freezerStock < val) return alert("大倉總庫存量不足！");
-            item.freezerStock = parseFloat((item.freezerStock - val).toFixed(3));
-            item.chillerStock = parseFloat((item.chillerStock + val).toFixed(3));
-            addLog(`🔄 移出備用：【${item.name}】移至現場 +${val} (大倉剩餘: ${item.freezerStock})`);
-        } else if (actionType === 'consume') {
-            if (item.chillerStock < val) return alert("現場存量不足以扣除！");
-            item.chillerStock = parseFloat((item.chillerStock - val).toFixed(3));
-            addLog(`📤 現場消耗：【${item.name}】扣除 -${val} (現場剩餘: ${item.chillerStock})`);
-        } else if (actionType === 'supplier') {
-            item.freezerStock = parseFloat((item.freezerStock + val).toFixed(3));
-            addLog(`📦 進貨入庫：【${item.name}】大倉增加 +${val} (大倉最新: ${item.freezerStock})`);
-        }
+        runStockTransaction((items, txLogs) => {
+            const item = items.find(i => i.id === id);
+            if (!item) { alert("找不到此品項，請重新整理。"); return false; }
 
-        inputElem.value = '';
-        saveDataToCloud();
+            if (actionType === 'transfer') {
+                if (item.freezerStock < val) { alert("大倉總庫存量不足！"); return false; }
+                item.freezerStock = parseFloat((item.freezerStock - val).toFixed(3));
+                item.chillerStock = parseFloat((item.chillerStock + val).toFixed(3));
+                pushLog(txLogs, `🔄 移出備用：【${item.name}】移至現場 +${val} (大倉剩餘: ${item.freezerStock})`);
+            } else if (actionType === 'consume') {
+                if (item.chillerStock < val) { alert("現場存量不足以扣除！"); return false; }
+                item.chillerStock = parseFloat((item.chillerStock - val).toFixed(3));
+                pushLog(txLogs, `📤 現場消耗：【${item.name}】扣除 -${val} (現場剩餘: ${item.chillerStock})`);
+            } else if (actionType === 'supplier') {
+                item.freezerStock = parseFloat((item.freezerStock + val).toFixed(3));
+                pushLog(txLogs, `📦 進貨入庫：【${item.name}】大倉增加 +${val} (大倉最新: ${item.freezerStock})`);
+            }
+        }).then(() => {
+            inputElem.value = '';
+        });
     };
 
     function renderTable() {
@@ -313,7 +393,7 @@
         let lowItemsHtml = '';
         let lowCount = 0;
 
-        inventoryData.forEach((item, index) => {
+        inventoryData.forEach((item) => {
             if (currentCategoryFilter !== '全部' && item.category !== currentCategoryFilter) return;
 
             const isLow = item.freezerStock <= item.threshold;
@@ -322,18 +402,19 @@
                 lowItemsHtml += `<li>【${item.category}】${item.name} (大倉剩餘: <strong>${item.freezerStock}</strong> ${item.unit})</li>`;
             }
 
+            const dis = isOffline ? 'disabled' : '';
             tbody.innerHTML += `
                 <tr class="${isLow ? 'low-stock' : ''}">
                     <td style="color:#777; font-size:13px;">${item.category}</td>
                     <td style="text-align: left;"><strong>${item.name}</strong></td>
-                    <td><input type="number" value="${item.threshold}" style="width:45px; text-align:center;" onchange="updateThreshold(${index}, this.value)"></td>
+                    <td><input type="number" value="${item.threshold}" style="width:45px; text-align:center;" onchange="updateThreshold(${item.id}, this.value)" ${dis}></td>
                     <td style="font-size:15px; font-weight:bold; color: ${isLow ? '#c62828' : '#455a64'};">${item.freezerStock} <small>${item.unit}</small></td>
                     <td>
                         <div class="action-group">
-                            <input type="number" id="input-${index}" class="qty-input" min="0" step="any" placeholder="數量">
-                            <button class="btn-op btn-transfer" onclick="handleStockAction(${index}, 'transfer')">🔄 移至現場</button>
-                            <button class="btn-op btn-consume" onclick="handleStockAction(${index}, 'consume')">－ 消耗</button>
-                            <button class="btn-op btn-supplier" onclick="handleStockAction(${index}, 'supplier')">＋ 大倉進貨</button>
+                            <input type="number" id="input-${item.id}" class="qty-input" min="0" step="any" placeholder="數量" ${dis}>
+                            <button class="btn-op btn-transfer" onclick="handleStockAction(${item.id}, 'transfer')" ${dis}>🔄 移至現場</button>
+                            <button class="btn-op btn-consume" onclick="handleStockAction(${item.id}, 'consume')" ${dis}>－ 消耗</button>
+                            <button class="btn-op btn-supplier" onclick="handleStockAction(${item.id}, 'supplier')" ${dis}>＋ 大倉進貨</button>
                         </div>
                     </td>
                     <td style="font-size:15px; font-weight:bold; color: #1565c0;">${item.chillerStock} <small>${item.unit}</small></td>
