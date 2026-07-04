@@ -1,0 +1,24 @@
+{
+  "name": "蔡叔叔比薩屋 後場管理系統",
+  "short_name": "蔡叔叔後場",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#2e7d32",
+  "description": "門市後場管理 PWA：庫存、叫貨、簽收、盤點、銷售回報與報表",
+  "icons": [
+    {
+      "src": "icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+rules_version = '2';
+
+// 蔡叔叔比薩屋 庫存系統 Firestore 安全規則
+//
+// 防護目標（在「無登入機制」的前提下能做到的最大保護）：
+// 1. 只開放系統實際使用的路徑，其他任何集合/文件一律拒絕
+// 2. 核心文件（庫存主檔、設定檔）禁止刪除
+// 3. 所有寫入須符合欄位白名單與型別檢查，阻擋亂寫與塞垃圾資料
+// 4. 操作日誌禁止事後修改（只能新增與清除）
+//
+// ⚠️ 注意：這是結構性防護。因為系統目前沒有登入機制，
+//    知道專案設定的人仍可透過合法格式讀寫。若要真正的存取控制，
+//    未來需加入 Firebase Authentication（可再討論）。
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── 庫存主檔 ─────────────────────────────────────────
+    match /inventory/mainStore {
+      allow read: if true;
+      allow create, update: if
+        request.resource.data.items is list &&
+        request.resource.data.items.size() <= 2000 &&
+        (!('settings' in request.resource.data) || request.resource.data.settings is map);
+      allow delete: if false;   // 主檔絕不允許整份刪除
+
+      // 操作日誌：只能新增與刪除（清除紀錄功能），不能修改
+      match /logs/{logId} {
+        allow read: if true;
+        allow create: if
+          request.resource.data.keys().hasOnly(
+            ['id','ts','time','text','itemId','actionType','baseQty',
+             'fromLocation','toLocation','reason','orderId','netAdjBase']) &&
+          request.resource.data.ts is number &&
+          request.resource.data.text is string &&
+          request.resource.data.text.size() <= 500;
+        allow update: if false;  // 日誌不可竄改
+        allow delete: if true;   // 清除紀錄／清理舊記錄需要
+      }
+
+      // 叫貨單
+      match /orders/{orderId} {
+        allow read: if true;
+        allow create, update: if
+          request.resource.data.keys().hasOnly(
+            ['itemId','itemName','status','orderQty','orderUnit',
+             'procFactor','factorBase','baseUnit','stockUnit',
+             'requiresProcessing','notes','createdAt','orderedAt',
+             'receivedAt','doneAt','receiveQty','processedQty',
+             'diffLog','closedShort','closedOver']) &&
+          request.resource.data.status in
+            ['pending','ordered','partial','processing','over','done'] &&
+          request.resource.data.orderQty is number &&
+          request.resource.data.itemName is string &&
+          request.resource.data.itemName.size() <= 100;
+        allow delete: if true;   // 取消／刪除叫貨單需要
+      }
+
+      // 銷售回報（未來 Google Forms 橋接也走此規則，欄位格式相同即可）
+      match /sales/{saleId} {
+        allow read: if true;
+        allow create, update: if
+          request.resource.data.keys().hasOnly(
+            ['date','counts','itemNames','ts','time','source','updatedAt']) &&
+          request.resource.data.date is string &&
+          request.resource.data.date.size() == 10 &&
+          request.resource.data.counts is map;
+        allow delete: if true;   // 員工刪除當日誤填、清除功能需要
+      }
+    }
+
+    // ── 設定檔（分類、PIN 碼）────────────────────────────
+    match /inventory/settings {
+      allow read: if true;
+      allow create, update: if
+        request.resource.data.keys().hasOnly(['categories','adminPin','countPin']) &&
+        (!('categories' in request.resource.data) || (
+          request.resource.data.categories is list &&
+          request.resource.data.categories.size() <= 300)) &&
+        (!('adminPin' in request.resource.data) || (
+          request.resource.data.adminPin is string &&
+          request.resource.data.adminPin.size() <= 12)) &&
+        (!('countPin' in request.resource.data) || (
+          request.resource.data.countPin is string &&
+          request.resource.data.countPin.size() <= 12));
+      allow delete: if false;
+    }
+
+    // ── 其他路徑一律拒絕 ─────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

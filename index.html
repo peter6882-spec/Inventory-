@@ -1,0 +1,2356 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#2e7d32">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="蔡叔叔後場">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="icon-192.svg">
+    <title>蔡叔叔比薩屋 後場管理系統</title>
+    <style>
+        :root {
+            --primary-color: #2e7d32;
+            --primary-dark: #1b5e20;
+            --transfer-color: #0288d1;
+            --danger-color: #c62828;
+            --warning-color: #ef6c00;
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --line-color: #e0e4e2;
+            --muted: #68756f;
+            --soft-green: #edf7ed;
+            --soft-blue: #e8f3fb;
+            --soft-red: #fff1f1;
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --shadow: 0 8px 24px rgba(24, 48, 32, 0.10);
+        }
+        * { box-sizing: border-box; }
+        html, body { min-height: 100%; }
+        body {
+            margin: 0;
+            font-family: "Microsoft JhengHei", "PingFang TC", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background: radial-gradient(circle at top left, #e8f5e9 0, #f4f6f8 28%, #f4f6f8 100%);
+            color: #26332d;
+        }
+        button, input, select, textarea { font: inherit; }
+        button { touch-action: manipulation; }
+        .app-shell { max-width: 1320px; margin: 0 auto; padding: 18px; }
+        .hero {
+            background: rgba(255,255,255,0.9);
+            border: 1px solid rgba(255,255,255,0.85);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            padding: 18px 20px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+            position: sticky;
+            top: 8px;
+            z-index: 20;
+            backdrop-filter: blur(14px);
+        }
+        h1 { margin: 0; color: var(--primary-dark); font-size: clamp(22px, 2.8vw, 32px); letter-spacing: 0.3px; }
+        .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+        .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+        .sync-status {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 7px 14px; border-radius: 999px; font-size: 13px;
+            font-weight: 700; white-space: nowrap;
+        }
+        .sync-status .dot { width: 9px; height: 9px; border-radius: 50%; }
+        .sync-syncing { background: #fff3e0; color: #e65100; }
+        .sync-syncing .dot { background: #fb8c00; animation: pulse 1s infinite; }
+        .sync-synced  { background: #e8f5e9; color: #2e7d32; }
+        .sync-synced  .dot { background: #43a047; }
+        .sync-failed  { background: #ffebee; color: #b71c1c; }
+        .sync-failed  .dot { background: #c62828; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .nav-tabs { display: flex; gap: 8px; margin: 18px 0; overflow-x: auto; padding-bottom: 2px; }
+        .announce-bar { display: flex; align-items: center; gap: 10px; background: #fff8e1; border: 1px solid #ffe082; border-radius: 12px; padding: 11px 16px; margin-bottom: 16px; }
+        .announce-icon { flex-shrink: 0; font-size: 18px; }
+        .announce-track { flex: 1; min-width: 0; overflow: hidden; }
+        .announce-bar.mode-marquee .announce-track { white-space: nowrap; }
+        .announce-bar.mode-marquee #announceText { display: inline-block; padding-left: 100%; color: #6b5400; font-weight: 600; animation: announce-scroll 18s linear infinite; }
+        .announce-bar.mode-static #announceText { display: block; color: #6b5400; font-weight: 600; white-space: pre-wrap; line-height: 1.6; }
+        @keyframes announce-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+        .nav-tab, .btn {
+            border: 0;
+            border-radius: 999px;
+            padding: 10px 16px;
+            background: #fff;
+            color: #33433b;
+            cursor: pointer;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border: 1px solid var(--line-color);
+        }
+        .nav-tab.active, .btn-primary { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
+        .btn-danger { background: var(--danger-color); color: #fff; border-color: var(--danger-color); }
+        .btn-secondary { background: #607d8b; color: #fff; border-color: #607d8b; }
+        .btn-ghost { background: transparent; box-shadow: none; color: var(--muted); border: 1px solid var(--line-color); }
+        .btn-small { padding: 7px 11px; font-size: 13px; }
+        .lang-toggle { display:flex; gap:3px; align-items:center; }
+        .lang-btn { padding:5px 10px; font-size:12px; font-weight:700; border-radius:999px; border:1px solid var(--line-color); background:#fff; color:#555; cursor:pointer; transition:all .15s; }
+        .lang-btn.active { background:var(--primary-color); color:#fff; border-color:var(--primary-color); }
+        .vi-tip-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
+        .vi-tip-overlay.hidden { display:none; }
+        .vi-tip-box { background:#fff; border-radius:16px; padding:28px 24px; max-width:320px; width:100%; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,0.18); }
+        .vi-tip-icon { font-size:32px; margin-bottom:10px; }
+        .vi-tip-title { font-size:15px; font-weight:700; color:#1b5e20; margin:0 0 12px; line-height:1.4; }
+        .vi-tip-body { font-size:14px; color:#444; line-height:1.8; margin:0 0 20px; }
+        .vi-tip-zh { color:#1b5e20; font-style:normal; }
+        .vi-tip-btn { background:var(--primary-color); color:#fff; border:none; border-radius:999px; padding:10px 28px; font-size:15px; font-weight:700; cursor:pointer; }
+        .panel {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            padding: 18px;
+            border: 1px solid rgba(255,255,255,0.85);
+        }
+        .toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) auto; gap: 12px; align-items: center; margin-bottom: 14px; }
+        .search-input, .field, select, textarea {
+            width: 100%;
+            border: 1px solid #cdd7d1;
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: #fff;
+            color: #26332d;
+            outline-color: var(--primary-color);
+        }
+        .filter-container { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 16px; }
+        .filter-btn { padding: 7px 13px; border: 1px solid #c8d5cd; background: #fff; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 700; color: #42524a; }
+        .filter-btn.active, .filter-btn:hover { background-color: var(--primary-color); color: #fff; border-color: var(--primary-color); }
+        .alert-box { background-color: #ffebee; border-left: 5px solid #c62828; padding: 14px 16px; border-radius: 12px; margin-bottom: 16px; display: none; }
+        .alert-box ul { margin: 8px 0 0; padding-left: 20px; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; }
+        th, td { padding: 12px 9px; border-bottom: 1px solid #e0e4e2; vertical-align: middle; }
+        th { background-color: #f4f8f5; color: #41514a; position: sticky; top: 93px; z-index: 10; }
+        td.name-cell { text-align: left; min-width: 190px; }
+        .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+        .badge-muted { background: #f0f3f1; color: #60706a; }
+        .badge-low { background: #ffebee; color: #c62828; }
+        .badge-ok { background: #e8f5e9; color: #2e7d32; }
+        .badge-off { background: #eceff1; color: #607d8b; }
+        .stock-stack { display: grid; gap: 5px; text-align: left; }
+        .stock-line { display: flex; justify-content: space-between; gap: 10px; border-radius: 9px; padding: 5px 8px; background: #f7faf8; }
+        .stock-line strong { white-space: nowrap; }
+        .low-stock { background-color: #fff8f8; }
+        .inactive-row { opacity: 0.52; }
+        .mobile-cards { display: none; }
+        .item-card { border: 1px solid #e2e7e4; border-radius: 16px; padding: 14px; background: #fff; box-shadow: 0 3px 14px rgba(0,0,0,0.05); }
+        .item-card + .item-card { margin-top: 12px; }
+        .card-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+        .card-title { font-size: 17px; font-weight: 900; color: #24352c; }
+        .card-meta { color: var(--muted); font-size: 13px; margin-top: 4px; }
+        .location-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0; }
+        .location-tile { background: #f7faf8; border: 1px solid #e2e8e4; border-radius: 12px; padding: 9px; min-height: 66px; }
+        .location-tile .loc { color: #6a786f; font-size: 12px; font-weight: 700; }
+        .location-tile .qty { margin-top: 4px; font-weight: 900; line-height: 1.35; }
+        .log-container { max-height: 220px; overflow-y: auto; background: #fafafa; padding: 10px; font-size: 13px; margin-top: 10px; border: 1px solid #eee; border-radius: 12px; }
+        .log-line { display: grid; grid-template-columns: 150px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .log-line:last-child { border-bottom: 0; }
+        .log-time { color: #8a9690; }
+        .hidden { display: none !important; }
+        .loading-text { text-align: center; padding: 34px; font-size: 18px; color: #666; }
+        body.is-offline button[data-write="true"], body.is-offline input, body.is-offline select, body.is-offline textarea { opacity: 0.55; cursor: not-allowed; }
+
+        .help { color: #7d8a83; font-size: 12px; line-height: 1.5; margin-top: 5px; }
+        .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip { border-radius: 999px; background: #eef5ef; border: 1px solid #d6e5da; padding: 7px 10px; display: inline-flex; gap: 8px; align-items: center; font-size: 13px; }
+        .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%) translateY(20px); background: #23352b; color: #fff; border-radius: 999px; padding: 10px 16px; opacity: 0; pointer-events: none; transition: all .22s ease; z-index: 200; box-shadow: var(--shadow); }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .offline-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: #b71c1c; color: #fff; padding: 12px 20px; text-align: center; font-size: 14px; font-weight: 700; display: none; box-shadow: 0 2px 10px rgba(183,28,28,0.45); letter-spacing: 0.3px; }
+        .offline-banner.show { display: block; }
+        @keyframes banner-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+        .offline-banner.shake { animation: banner-shake 0.38s ease; }
+        body.is-offline .app-shell { padding-top: calc(10px + 44px); }
+        .count-table-wrap { display: block; }
+        .count-cards-mobile { display: none; }
+        @media (max-width: 1280px) {
+            .hero { grid-template-columns: 1fr; position: static; }
+            .header-actions { justify-content: flex-start; }
+            .toolbar { grid-template-columns: 1fr; }
+            th { top: 0; }
+        }
+        @media (max-width: 680px) {
+            .desktop-table { display: none; }
+            .mobile-cards { display: block; }
+            .count-table-wrap { display: none; }
+            .count-cards-mobile { display: grid; gap: 14px; }
+            .location-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 560px) {
+            .app-shell { padding: 10px; }
+            .panel, .hero { border-radius: 16px; padding: 14px; }
+            .location-grid { grid-template-columns: 1fr; }
+            .log-line { grid-template-columns: 1fr; gap: 2px; }
+            .btn, .nav-tab { padding: 10px 13px; }
+        }
+        @media (display-mode: standalone) { .subtitle .pwa-hint { display: none; } }
+
+        /* === Inline Card Action Panel === */
+        .card-actions { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .card-act-btn { padding: 10px 6px; border-radius: 12px; font-size: 14px; font-weight: 800; background: #fff; cursor: pointer; transition: background 0.15s, color 0.15s; }
+        .card-act-btn.act-consume { border: 1.5px solid var(--danger-color); color: var(--danger-color); }
+        .card-act-btn.act-consume.active { background: var(--danger-color); color: #fff; }
+        .card-act-btn.act-receive { border: 1.5px solid var(--primary-color); color: var(--primary-color); }
+        .card-act-btn.act-receive.active { background: var(--primary-color); color: #fff; }
+        .card-act-btn.act-prep { border: 1.5px solid #006064; color: #006064; }
+        .card-act-btn.act-prep.active { background: #006064; color: #fff; }
+        .card-act-btn.act-return { border: 1.5px solid var(--warning-color); color: var(--warning-color); }
+        .card-act-btn.act-return.active { background: var(--warning-color); color: #fff; }
+        .card-act-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+        .card-notes { font-size: 12px; color: #5a6e64; background: #f0f5f2; border-radius: 8px; padding: 8px 12px; margin-top: 8px; white-space: pre-line; line-height: 1.6; }
+        .card-panel { margin-top: 10px; padding: 14px; background: #f7faf8; border-radius: 14px; border: 1px solid #d8e5dc; }
+        .panel-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+        .panel-label { font-size: 13px; font-weight: 800; color: #506059; white-space: nowrap; }
+        .panel-loc-info { font-size: 14px; font-weight: 800; padding: 7px 13px; border-radius: 10px; }
+        .panel-input { flex: 1; min-width: 80px; border: 1px solid #cdd7d1; border-radius: 10px; padding: 10px 12px; font-size: 16px; background: #fff; }
+        .unit-chips { display: flex; gap: 6px; }
+        .unit-chips label { display: inline-flex; align-items: center; padding: 7px 14px; border: 1.5px solid #cdd7d1; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; background: #fff; user-select: none; }
+        .unit-chips label:has(input:checked) { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
+        .unit-chips input[type="radio"] { display: none; }
+        .loc-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+        .loc-chips label { display: inline-flex; flex-direction: column; align-items: center; padding: 8px 14px; border: 1.5px solid #cdd7d1; border-radius: 12px; font-size: 13px; font-weight: 800; cursor: pointer; background: #fff; line-height: 1.4; user-select: none; white-space: nowrap; }
+        .loc-chips label:has(input:checked) { background: var(--soft-blue); border-color: var(--transfer-color); color: var(--transfer-color); }
+        .loc-chips input[type="radio"] { display: none; }
+        .loc-sub { font-size: 11px; color: #8a9690; font-weight: 500; margin-top: 2px; }
+        .loc-chips label:has(input:checked) .loc-sub { color: var(--transfer-color); }
+        .panel-note { width: 100%; border: 1px solid #cdd7d1; border-radius: 10px; padding: 9px 12px; font-size: 14px; margin-bottom: 10px; background: #fff; }
+        .panel-submit { width: 100%; padding: 13px; border-radius: 12px; font-size: 16px; font-weight: 800; border: 0; cursor: pointer; }
+
+        /* === Count (盤點) view === */
+        .count-pin-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 20px; text-align: center; }
+        .count-pin-wrap h3 { margin: 0 0 8px; color: var(--primary-dark); font-size: 20px; }
+        .count-pin-input { font-size: 22px; letter-spacing: 10px; text-align: center; border: 2px solid #cdd7d1; border-radius: 12px; padding: 12px 20px; width: 200px; background: #fff; }
+        .count-card { background: #fff; border: 1.5px solid #e2e7e4; border-radius: 16px; padding: 16px; }
+        .count-card.count-dirty { border-color: #f59e0b; background: #fffdf0; }
+        .count-card.count-confirmed { border-color: var(--primary-color); background: #f4fbf4; }
+        .count-card-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .count-card-title { font-size: 16px; font-weight: 900; color: #24352c; }
+        .count-loc-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f3f1; flex-wrap: wrap; }
+        .count-loc-row:last-of-type { border-bottom: 0; }
+        .count-loc-name { font-size: 13px; color: #506059; font-weight: 800; width: 70px; flex-shrink: 0; }
+        .count-loc-current { font-size: 12px; color: #9aaba3; width: 72px; flex-shrink: 0; }
+        .count-loc-input { border: 1.5px solid #cdd7d1; border-radius: 10px; padding: 8px 12px; font-size: 16px; width: 100px; background: #fff; }
+        .count-loc-input:focus { border-color: var(--primary-color); outline: none; }
+        .count-loc-unit { font-size: 13px; color: #506059; }
+        .count-confirm-btn { margin-top: 12px; width: 100%; padding: 11px; border-radius: 12px; font-weight: 800; border: 0; cursor: pointer; background: var(--primary-color); color: #fff; font-size: 15px; }
+        .count-confirm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .count-input-stack { display: grid; gap: 6px; }
+        .count-input-row { display: flex; align-items: center; gap: 5px; }
+        .count-input-label { font-size: 12px; color: #6a786f; font-weight: 700; width: 38px; flex-shrink: 0; }
+        .count-table-input { width: 76px; border: 1.5px solid #cdd7d1; border-radius: 8px; padding: 6px 8px; font-size: 14px; background: #fff; }
+        .count-table-input:focus { border-color: var(--primary-color); outline: none; }
+        .count-input-unit { font-size: 12px; color: #8a9690; white-space: nowrap; }
+        .count-table-confirm-btn { padding: 8px 14px; border: 0; border-radius: 10px; background: var(--primary-color); color: #fff; font-weight: 800; cursor: pointer; font-size: 13px; white-space: nowrap; }
+        tr.count-dirty td { background: #fffdf0 !important; }
+        tr.count-dirty .count-table-confirm-btn { background: #f59e0b; }
+        tr.count-confirmed td { background: #f4fbf4 !important; }
+        tr.count-confirmed .count-table-confirm-btn { background: #43a047; }
+        .full-count-bar { background: #f0faf2; border: 1.5px solid #a8d5b0; border-radius: 14px; padding: 12px 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .full-count-progress { font-size: 15px; font-weight: 800; color: var(--primary-dark); flex: 1; min-width: 100px; }
+        /* === Quick action inline (table rows) === */
+        .qact-input-wrap { display: flex; align-items: center; gap: 6px; }
+        .qact-qty { width: 76px; border: 1.5px solid #cdd7d1; border-radius: 10px; padding: 8px 10px; font-size: 15px; background: #fff; text-align: center; }
+        .qact-qty:focus { border-color: var(--primary-color); outline: none; }
+        .qact-btns { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+        .qact-btn { padding: 7px 10px; border: 0; border-radius: 9px; font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+        .qact-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+        .qact-receive { background: #e8f5e9; color: #2e7d32; }
+        .qact-prep    { background: #e0f2f1; color: #006064; }
+        .qact-consume { background: #ffebee; color: #c62828; }
+        .qact-return  { background: #fff3e0; color: #e65100; }
+        .qact-waste   { background: #efebe9; color: #5d4037; }
+        .wchip { padding: 9px 18px; border: 1.5px solid #c9b7b0; border-radius: 18px; background: #fff; color: #5d4037; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .wchip.active { background: #5d4037; color: #fff; border-color: #5d4037; }
+        .card-act-btn.act-waste { border: 1.5px solid #5d4037; color: #5d4037; }
+        .card-act-btn.act-waste.active { background: #5d4037; color: #fff; }
+        .qact-info    { background: #e8f3fb; border: 1px solid #90c4e4; color: #1565c0; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .info-cell-btns { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+        .info-pop { position: absolute; right: 0; top: calc(100% + 6px); background: #23352b; color: #fff; border-radius: 12px; padding: 10px 14px; font-size: 12px; line-height: 1.8; white-space: pre-line; width: max-content; max-width: 280px; z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,0.22); }
+        .info-pop .info-notes { margin-top: 8px; padding-top: 8px; border-top: 1px solid #3d5a4a; color: #b6cfc3; }
+        .info-pop::before { content: ""; position: absolute; top: -6px; right: 12px; border: 6px solid transparent; border-top: 0; border-bottom-color: #23352b; }
+        td.qact-td { white-space: nowrap; }
+        /* === Item log expand === */
+        .qact-log-toggle { background: #eaf0ed; border: 1px solid #a8bdb5; color: #3d5a4a; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .qact-log-toggle.open { color: #fff; border-color: var(--primary-color); background: var(--primary-color); }
+        .log-subrow > td { padding: 0 !important; }
+        .log-subrow-inner { padding: 10px 20px 14px; background: #f5f9f6; border-bottom: 2px solid #d0e4d8; }
+        .log-entry { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid #edf2ef; font-size: 12px; align-items: flex-start; }
+        .log-entry:last-of-type { border-bottom: 0; }
+        .log-time { color: #8a9e96; white-space: nowrap; flex-shrink: 0; min-width: 130px; }
+        .log-text { color: #2d4a38; line-height: 1.4; }
+        .log-empty { color: #8a9e96; font-size: 12px; padding: 6px 0; }
+        .log-more-btn { margin-top: 8px; background: none; border: 1px solid #cdd7d1; color: #5a7060; padding: 5px 14px; border-radius: 8px; font-size: 12px; cursor: pointer; display: block; }
+        .card-log-toggle { width: 100%; margin-top: 8px; background: none; border: 1px solid #cdd7d1; color: #7d8a83; padding: 8px; border-radius: 10px; font-size: 13px; cursor: pointer; }
+        .card-log-toggle.open { color: var(--primary-color); border-color: var(--primary-color); background: #eef7f0; }
+        .card-log { margin-top: 6px; }
+        .card-log .log-entry { flex-direction: column; gap: 2px; padding: 6px 0; }
+        .card-log .log-time { min-width: unset; font-size: 11px; }
+    </style>
+</head>
+<body>
+<div class="offline-banner" id="offlineBanner">📵 目前離線 — 無法儲存資料，請確認網路連線後再操作</div>
+<div class="app-shell">
+    <header class="hero">
+        <div>
+            <h1>🍕 蔡叔叔比薩屋 後場管理系統 </h1>
+            <p class="subtitle">庫存、叫貨、銷售、盤點，一站完成！ <span style="font-size:11px;color:#9ab0a5;">v86</span></p>
+        </div>
+        <div class="header-actions">
+            <div class="lang-toggle">
+                <button class="lang-btn active" id="langZh" type="button" onclick="setLang('zh')">🇹🇼 中文</button>
+                <button class="lang-btn" id="langVi" type="button" onclick="setLang('vi')">🇻🇳 越南文</button>
+            </div>
+            <div class="sync-status sync-syncing" id="syncStatus"><span class="dot"></span><span id="syncText">同步中…</span></div>
+        </div>
+    </header>
+
+    <nav class="nav-tabs" aria-label="主要功能">
+        <button class="nav-tab active" id="tabStock" type="button" onclick="openStockTab()">庫存操作</button>
+        <button class="nav-tab" id="tabReceive" type="button" onclick="openReceiveTab()">簽收入庫</button>
+        <button class="nav-tab" id="tabSales" type="button" onclick="openSalesTab()">銷售回報</button>
+        <button class="nav-tab" id="tabCount" type="button" onclick="openCountTab()">盤點</button>
+    </nav>
+
+    <div id="announceBar" class="announce-bar" style="display:none;">
+        <span class="announce-icon">📢</span>
+        <div class="announce-track"><span id="announceText"></span></div>
+    </div>
+
+    <main id="stockView" class="panel">
+        <div class="alert-box" id="alertBox">
+            <strong style="color:#c62828;"><span id="alertBoxTitle">⚠️ 叫貨提醒：</span></strong> <span id="alertBoxSub">以下大倉區庫存低於安全線，請安排叫貨。</span>
+            <ul id="alertList"></ul>
+        </div>
+
+        <div class="toolbar">
+            <input id="searchInput" class="search-input" type="search" placeholder="搜尋品項、分類或單位…" oninput="debouncedRenderInventory()">
+        </div>
+
+        <div class="filter-container" id="filterContainer"></div>
+
+        <div class="desktop-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th id="th-col-cat" style="width:5%;">類別</th>
+                        <th id="th-col-name" style="text-align:left;width:15%;">食材 / 物品</th>
+                        <th id="th-col-wh" style="width:13%;">大倉</th>
+                        <th id="th-col-prep" style="width:11%;">備貨</th>
+                        <th id="th-col-alert" style="width:9%;">提醒</th>
+                        <th id="th-col-qty" style="width:12%;">數量</th>
+                        <th id="th-col-action" style="width:22%;">動作</th>
+                        <th id="th-col-info" style="width:13%;">資訊</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryBody"><tr><td colspan="8" class="loading-text">🔄 正在載入資料庫，請稍候...</td></tr></tbody>
+            </table>
+        </div>
+        <div id="mobileCards" class="mobile-cards"></div>
+
+        <section style="margin-top:26px;border-top:2px dashed #dce3df;padding-top:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+                <strong id="logSectionTitle" style="color:#43534b;">🕒 異動日誌</strong>
+                <button class="btn btn-ghost btn-small" id="clearLogsBtn" data-write="true" type="button" onclick="clearLogs()">清除紀錄</button>
+            </div>
+            <div class="log-container" id="logContainer"></div>
+        </section>
+    </main>
+
+</div>
+
+
+<main id="countView" class="panel hidden">
+    <!-- PIN gate -->
+    <div id="countPinOverlay" class="count-pin-wrap">
+        <h3 id="countPinTitle">🔒 請輸入盤點代碼</h3>
+        <p id="countPinSubtitle" style="color:#8a9690;font-size:13px;margin:0 0 18px;">盤點代碼可在品項管理後台 → 系統設定中修改</p>
+        <input id="countPinInput" class="count-pin-input" type="password" inputmode="numeric" maxlength="8" placeholder="••••"
+            onkeydown="if(event.key==='Enter')verifyCountPin()">
+        <button id="countPinBtn" class="btn btn-primary" style="margin-top:14px;width:200px;" type="button" onclick="verifyCountPin()">進入盤點</button>
+        <div id="countPinError" style="color:#c62828;margin-top:10px;font-size:14px;display:none;">代碼錯誤，請再試一次</div>
+    </div>
+    <!-- Count content -->
+    <div id="countContent" class="hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+            <div>
+                <strong id="countSectionTitle" style="font-size:18px;color:var(--primary-dark);">📋 庫存盤點</strong>
+                <div id="countSectionSub" style="font-size:13px;color:#8a9690;margin-top:4px;">輸入各倉位實際數量（顯示單位），確認後寫入系統</div>
+                <div id="lastFullCountInfo" style="font-size:12px;color:#8a9690;margin-top:3px;"></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <button class="btn btn-primary btn-small" id="startFullCountBtn" type="button" onclick="startFullCount()">全品項盤點</button>
+                <button class="btn btn-ghost btn-small" id="lockCountBtn" type="button" onclick="lockCount()">🔒 登出</button>
+            </div>
+        </div>
+        <div id="fullCountBar" class="full-count-bar" style="display:none;">
+            <span class="full-count-progress" id="fullCountProgress">已確認 0 / 0 項</span>
+            <button class="btn btn-ghost btn-small" id="cancelFullCountBtn" type="button" onclick="cancelFullCount()">取消</button>
+            <button class="btn btn-primary btn-small" id="finishFullCountBtn" type="button" onclick="finishFullCount()">✓ 完成盤點</button>
+        </div>
+        <div class="toolbar" style="margin-bottom:12px;">
+            <input id="countSearchInput" class="search-input" type="search" placeholder="搜尋品項、分類或單位…" oninput="debouncedRenderCountItems()">
+        </div>
+        <div id="countItems"></div>
+    </div>
+</main>
+
+<main id="receiveView" class="panel hidden">
+    <div style="margin-bottom:14px;">
+        <strong id="receiveSectionTitle" style="font-size:18px;color:var(--primary-dark);">簽收入庫</strong>
+        <div id="receiveSectionSub" style="font-size:13px;color:#8a9690;margin-top:4px;">確認到貨數量後入庫；需處理品項先簽收，處理完成後再登記入庫</div>
+    </div>
+    <div id="receiveOrders"></div>
+</main>
+
+<main id="salesView" class="panel hidden">
+    <div style="margin-bottom:14px;">
+        <strong id="salesSectionTitle" style="font-size:18px;color:var(--primary-dark);">銷售回報</strong>
+        <div id="salesSectionSub" style="font-size:13px;color:#8a9690;margin-top:4px;">輸入各品項銷售數量後送出；同一天可回報多筆，當日記錄可修改</div>
+    </div>
+    <div id="salesFormWrap" style="background:#fff;border:1.5px solid #dce6e0;border-radius:12px;padding:16px;max-width:480px;box-shadow:0 1px 3px rgba(0,0,0,0.05);"></div>
+    <div style="margin-top:20px;max-width:480px;">
+        <strong id="salesTodayTitle" style="font-size:15px;color:#43534b;">今日回報記錄</strong>
+        <div id="salesTodayList" style="margin-top:8px;"></div>
+    </div>
+</main>
+
+<div id="wasteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:center;justify-content:center;padding:16px;" onclick="if(event.target===this)closeWasteModal()">
+    <div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:360px;box-shadow:0 12px 40px rgba(0,0,0,0.25);">
+        <h3 id="wasteModalTitle" style="margin:0 0 4px;font-size:17px;color:#5d4037;">報廢原因</h3>
+        <div id="wasteModalItem" style="font-size:13px;color:#8a9690;margin-bottom:14px;"></div>
+        <div id="wasteReasonChips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
+        <input id="wasteReasonText" type="text" style="width:100%;box-sizing:border-box;border:1.5px solid #c8d5cf;border-radius:8px;padding:10px 12px;font-size:15px;display:none;">
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
+            <button class="btn btn-ghost" type="button" id="wasteCancelBtn" onclick="closeWasteModal()">取消</button>
+            <button class="btn" type="button" id="wasteOkBtn" style="background:#5d4037;color:#fff;" onclick="confirmWasteModal()">確認報廢</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { doc, collection, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, runTransaction, getDocs, query, where, orderBy, limit as fsLimit, writeBatch, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+   
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCUYkvADtC6tM8uENRFNUb7OJlTUcisfFE",
+  authDomain: "caishushu-inventory.firebaseapp.com",
+  projectId: "caishushu-inventory",
+  storageBucket: "caishushu-inventory.firebasestorage.app",
+  messagingSenderId: "228644978060",
+  appId: "1:228644978060:web:ac87081548d5a19305eaa9"
+};
+
+    const app = initializeApp(firebaseConfig);
+    const db = initializeFirestore(app, {
+        experimentalAutoDetectLongPolling: true,
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+    const docRef  = doc(db, "inventory", "mainStore");
+    const logsRef = collection(db, "inventory", "mainStore", "logs");
+    const ordersRef = collection(db, "inventory", "mainStore", "orders");
+    const salesRef  = collection(db, "inventory", "mainStore", "sales");
+
+    const SCHEMA_VERSION = 2;
+    const WAREHOUSE_KEYS = ["warehouseFrozen", "warehouseChilled", "warehouseRoom"];
+    const PREP_KEYS      = ["onsiteChilled", "prep"];
+    const LOCATION_DEFS = {
+        warehouseFrozen:  { id: "warehouseFrozen",  name: "大倉冷凍", short: "冷凍", group: "大倉" },
+        warehouseChilled: { id: "warehouseChilled", name: "大倉冷藏", short: "冷藏", group: "大倉" },
+        warehouseRoom:    { id: "warehouseRoom",    name: "大倉常溫", short: "常溫", group: "大倉" },
+        onsiteChilled:    { id: "onsiteChilled",    name: "解凍冷藏", short: "解凍", group: "備貨" },
+        prep:             { id: "prep",             name: "其他備貨", short: "其他", group: "備貨" },
+        pizzaStation:     { id: "pizzaStation",     name: "比薩區",   short: "比薩", group: "使用區" },
+        chickenStation:   { id: "chickenStation",   name: "炸雞區",   short: "炸雞", group: "使用區" },
+    };
+
+    let inventoryData = [];
+    let globalLogs = [];
+    let receiveOrdersData = [];
+    const itemLogsCache = {};
+    let settings = { categories: [], locations: Object.values(LOCATION_DEFS), countPin: "" };
+    let currentCategoryFilter = "全部";
+    let isOffline = false;
+
+    // ── Language (i18n) ────────────────────────────────────────
+    const T = {
+        zh: {
+            tab_stock: '庫存操作', tab_count: '盤點', tab_receive: '簽收入庫', tab_sales: '銷售回報',
+            sales_sub: '輸入各品項銷售數量後送出；同一天可回報多筆，當日記錄可修改',
+            sales_date: '日期', sales_editing: '修改中',
+            sales_submit: '送出回報', sales_update: '✅ 更新這筆', sales_cancel_edit: '取消',
+            sales_today_title: '今日回報記錄', sales_none: '今日尚無回報',
+            sales_edit: '修改', sales_delete: '刪除',
+            sales_saved: '✅ 已送出銷售回報', sales_updated: '✅ 已更新', sales_deleted: '✅ 已刪除',
+            sales_del_confirm: '確定刪除這筆回報？',
+            sales_no_items: '尚未設定銷售品項，請至後台「銷售」頁籤的品項設定新增',
+            rcv_sub: '確認到貨數量後入庫；需處理品項先簽收，處理完成後再登記入庫',
+            rcv_none: '目前沒有待簽收的叫貨單',
+            rcv_order_qty: '叫貨量', rcv_ordered_at: '下單：',
+            rcv_status_wait: '待簽收', rcv_status_proc: '處理中', rcv_need_proc: '需處理',
+            rcv_status_partial: '部分到貨', rcv_received: '已收', rcv_remaining: '待補',
+            rcv_recv_qty: '簽收數量', rcv_stockin_qty: '入庫數量', rcv_processed_qty: '處理完成數量',
+            rcv_btn_sign_in: '✅ 簽收並入庫', rcv_btn_sign: '✅ 確認簽收，開始處理', rcv_btn_done: '📦 處理完成，入庫',
+            rcv_done_toast: '✅ 已入庫並完成叫貨單', rcv_signed_toast: '✅ 已簽收，處理完成後記得回來登記入庫',
+            rcv_partial_toast: '✅ 已簽收，剩餘數量等待補送',
+            rcv_stockin_hint: '入庫至', rcv_notes: '備註：',
+            rcv_reason_lbl: '數量與叫貨不符，請選擇原因', rcv_reason_sel: '請選擇原因...',
+            r_miss: '廠商漏送', r_later: '缺貨延後補送', r_over: '廠商多送', r_scale: '秤重誤差', r_other: '其他',
+            rcv_reason_ph: '補充說明（選填）',
+            rcv_reason_need: '簽收數量與叫貨量不符，請選擇差異原因',
+            rcv_full_signed: '已全數簽收，此單由管理者於後台結案',
+            rcv_saving: '⏳ 寫入中…',
+            rcv_over_toast: '✅ 已入庫，超收部分待管理者於後台結案',
+            syncing: '同步中…', synced: '✓ 已同步', sync_failed: '⚠ 連線失敗，僅供檢視',
+            sync_connecting: '✓ 可操作（背景同步中）',
+                col_cat: '類別', col_name: '食材 / 物品', col_wh: '大倉', col_prep: '備貨',
+            col_alert: '提醒', col_qty: '數量', col_action: '動作', col_info: '資訊',
+            search_ph: '搜尋品項、分類或單位…',
+            alert_title: '⚠️ 叫貨提醒：', alert_sub: '以下大倉區庫存低於安全線，請安排叫貨。',
+            log_title: '🕒 異動日誌', clear_logs: '清除紀錄',
+            pin_title: '🔒 請輸入盤點代碼', pin_sub: '盤點代碼可在品項管理後台 → 系統設定中修改',
+            pin_btn: '進入盤點', pin_error: '代碼錯誤，請再試一次',
+            count_title: '📋 庫存盤點', count_sub: '輸入各倉位實際數量（顯示單位），確認後寫入系統',
+            full_count_btn: '全品項盤點', lock_btn: '🔒 登出',
+            cancel_btn: '取消', finish_btn: '✓ 完成盤點',
+            cat_all: '全部',
+            badge_off: '停用', badge_low: '⚠️ 補貨', badge_ok: '✅ 充足',
+            badge_low_s: '補貨', badge_ok_s: '充足', safety: '安全線',
+            btn_receive: '入庫', btn_prep: '備料', btn_consume: '消耗', btn_return: '回放', btn_waste: '報廢',
+            btn_receive_c: '📦 入庫', btn_prep_c: '🍕 備料', btn_consume_c: '📤 消耗', btn_return_c: '↩️ 回放', btn_waste_c: '🗑 報廢',
+            panel_waste_lbl: '報廢從', panel_ok_waste: '🗑 確認報廢',
+            waste_reason_need: '請選擇報廢原因',
+            waste_modal_title: '報廢原因',
+            waste_other_ph: '請輸入原因…',
+            w_expired: '過期', w_damaged: '損壞', w_other: '其他',
+            btn_info: '說明', to_exit: '出庫',
+            no_items: '沒有符合條件的品項', no_count_items: '沒有可盤點的品項',
+            no_log_7d: '近 7 天無操作記錄', no_log: '暫無紀錄', loading_log: '載入中…',
+            log_more: '查看更多（已顯示 {shown} / 共 {total} 筆）',
+            detail_open: '明細', detail_close: '收合',
+            detail_expand: '▼ 展開明細', detail_collapse: '▲ 收合明細',
+            last_count: '上次全品項盤點：', no_last_count: '（尚無完整盤點紀錄）',
+            full_progress: '已確認 {done} / {total} 項',
+            full_incomplete: '還有 {n} 項尚未確認，請繼續完成後再結束盤點。',
+            full_done: '✅ 全品項盤點完成！',
+            count_confirm_btn: '✓ 確認', count_current: '現：',
+            panel_receive_lbl: '入庫至', panel_prep_lbl: '備料',
+            panel_consume_lbl: '消耗', panel_return_lbl: '回放',
+            panel_qty: '數量', panel_note_ph: '備註（選填）',
+            panel_ok_receive: '✅ 確認入庫', panel_ok_prep: '🍕 確認備料',
+            panel_ok_consume: '📤 確認消耗', panel_ok_return: '↩️ 確認回放',
+            return_warn: '⚠️ 僅限完整包裝、未開封且符合保存條件的品項',
+            confirm_return: '請確認此品項為完整包裝、未開封，且仍符合保存條件。\n已開封或分裝後的剩餘量不可回放。',
+            item_not_found: '找不到此品項，請重新整理。', enter_qty: '請輸入大於 0 的數量。',
+            stock_short: '{loc} 存量不足。',
+            confirm_clear: '確定要清除所有紀錄嗎？所有連線設備都會同步清除。',
+            toast_synced: '已寫入並同步庫存', toast_no_change: '數量無變動，未寫入',
+            toast_cleared: '✅ 紀錄已清除', toast_no_logs: '沒有紀錄可清除',
+                tx_error: '操作未完成（可能因其他裝置同時操作），請再試一次：',
+            lang_zh: '🇹🇼 中文', lang_vi: '🇻🇳 越南文',
+        },
+        vi: {
+            tab_stock: 'Kho hàng', tab_count: 'Kiểm kê', tab_receive: 'Ký nhận nhập kho', tab_sales: 'Báo cáo bán hàng',
+            sales_sub: 'Nhập số lượng bán của từng món rồi gửi; một ngày có thể gửi nhiều lần, bản ghi trong ngày có thể sửa',
+            sales_date: 'Ngày', sales_editing: 'Đang sửa',
+            sales_submit: 'Gửi báo cáo', sales_update: '✅ Cập nhật', sales_cancel_edit: 'Hủy',
+            sales_today_title: 'Báo cáo hôm nay', sales_none: 'Hôm nay chưa có báo cáo',
+            sales_edit: 'Sửa', sales_delete: 'Xóa',
+            sales_saved: '✅ Đã gửi báo cáo', sales_updated: '✅ Đã cập nhật', sales_deleted: '✅ Đã xóa',
+            sales_del_confirm: 'Xóa bản ghi này?',
+            sales_no_items: 'Chưa cài đặt món bán hàng, vào trang quản trị → 銷售 để thêm',
+            rcv_sub: 'Xác nhận số lượng hàng đến rồi nhập kho; hàng cần xử lý thì ký nhận trước, xử lý xong mới ghi nhập kho',
+            rcv_none: 'Không có đơn đặt hàng chờ ký nhận',
+            rcv_order_qty: 'SL đặt hàng', rcv_ordered_at: 'Đặt hàng：',
+            rcv_status_wait: 'Chờ ký nhận', rcv_status_proc: 'Đang xử lý', rcv_need_proc: 'Cần xử lý',
+            rcv_status_partial: 'Giao một phần', rcv_received: 'Đã nhận', rcv_remaining: 'Còn thiếu',
+            rcv_recv_qty: 'SL ký nhận', rcv_stockin_qty: 'SL nhập kho', rcv_processed_qty: 'SL sau xử lý',
+            rcv_btn_sign_in: '✅ Ký nhận và nhập kho', rcv_btn_sign: '✅ Ký nhận, bắt đầu xử lý', rcv_btn_done: '📦 Xử lý xong, nhập kho',
+            rcv_done_toast: '✅ Đã nhập kho và hoàn tất đơn', rcv_signed_toast: '✅ Đã ký nhận, xử lý xong nhớ quay lại ghi nhập kho',
+            rcv_partial_toast: '✅ Đã ký nhận, phần còn lại chờ giao bổ sung',
+            rcv_stockin_hint: 'Nhập vào', rcv_notes: 'Ghi chú：',
+            rcv_reason_lbl: 'Số lượng khác với đơn đặt, chọn lý do', rcv_reason_sel: 'Chọn lý do...',
+            r_miss: 'Nhà cung cấp giao thiếu', r_later: 'Hết hàng, giao bổ sung sau', r_over: 'Nhà cung cấp giao dư', r_scale: 'Sai số cân', r_other: 'Khác',
+            rcv_reason_ph: 'Ghi chú thêm (tùy chọn)',
+            rcv_reason_need: 'Số lượng ký nhận khác đơn đặt, vui lòng chọn lý do',
+            rcv_full_signed: 'Đã ký nhận đủ, quản lý sẽ đóng đơn ở trang quản trị',
+            rcv_saving: '⏳ Đang ghi…',
+            rcv_over_toast: '✅ Đã nhập kho, phần dư chờ quản lý đóng đơn',
+            syncing: 'Đang đồng bộ…', synced: '✓ Đã đồng bộ', sync_failed: '⚠ Mất kết nối, chỉ xem',
+            sync_connecting: '✓ Có thể thao tác (đang đồng bộ)',
+            col_cat: 'Loại', col_name: 'Nguyên liệu / Vật phẩm', col_wh: 'Kho chính', col_prep: 'Sơ chế',
+            col_alert: 'Cảnh báo', col_qty: 'Số lượng', col_action: 'Thao tác', col_info: 'Thông tin',
+            search_ph: 'Tìm kiếm mặt hàng, danh mục…',
+            alert_title: '⚠️ Nhắc đặt hàng：', alert_sub: 'Kho chính dưới mức an toàn, hãy đặt hàng.',
+            log_title: '🕒 Nhật ký thay đổi', clear_logs: 'Xóa nhật ký',
+            pin_title: '🔒 Nhập mã kiểm kê', pin_sub: 'Mã kiểm kê có thể thay đổi trong trang quản trị → Cài đặt hệ thống',
+            pin_btn: 'Vào kiểm kê', pin_error: 'Mã sai, vui lòng thử lại',
+            count_title: '📋 Kiểm kê kho', count_sub: 'Nhập số lượng thực tế từng khu vực, xác nhận để ghi vào hệ thống',
+            full_count_btn: 'Kiểm kê toàn bộ', lock_btn: '🔒 Đăng xuất',
+            cancel_btn: 'Hủy', finish_btn: '✓ Hoàn thành kiểm kê',
+            cat_all: 'Tất cả',
+            badge_off: 'Ngưng dùng', badge_low: '⚠️ Bổ sung', badge_ok: '✅ Đủ hàng',
+            badge_low_s: 'Bổ sung', badge_ok_s: 'Đủ hàng', safety: 'Mức an toàn',
+            btn_receive: 'Nhập kho', btn_prep: 'Sơ chế', btn_consume: 'Xuất dùng', btn_return: 'Hoàn trả', btn_waste: 'Hủy hàng',
+            btn_receive_c: '📦 Nhập kho', btn_prep_c: '🍕 Sơ chế', btn_consume_c: '📤 Xuất dùng', btn_return_c: '↩️ Hoàn trả', btn_waste_c: '🗑 Hủy hàng',
+            panel_waste_lbl: 'Hủy từ', panel_ok_waste: '🗑 Xác nhận hủy',
+            waste_reason_need: 'Vui lòng chọn lý do hủy',
+            waste_modal_title: 'Lý do hủy',
+            waste_other_ph: 'Nhập lý do…',
+            w_expired: 'Hết hạn', w_damaged: 'Hư hỏng', w_other: 'Khác',
+            btn_info: 'Mô tả', to_exit: 'Ra ngoài',
+            no_items: 'Không có mặt hàng phù hợp', no_count_items: 'Không có mặt hàng để kiểm kê',
+            no_log_7d: 'Không có thao tác trong 7 ngày qua', no_log: 'Chưa có nhật ký', loading_log: 'Đang tải…',
+            log_more: 'Xem thêm (đã hiển thị {shown} / tổng {total})',
+            detail_open: 'Chi tiết', detail_close: 'Thu gọn',
+            detail_expand: '▼ Xem chi tiết', detail_collapse: '▲ Thu gọn',
+            last_count: 'Kiểm kê toàn bộ lần cuối：', no_last_count: '（Chưa có lần kiểm kê hoàn chỉnh）',
+            full_progress: 'Đã xác nhận {done} / {total} mặt hàng',
+            full_incomplete: 'Còn {n} mặt hàng chưa xác nhận, hãy hoàn thành trước khi kết thúc.',
+            full_done: '✅ Đã hoàn thành kiểm kê toàn bộ!',
+            count_confirm_btn: '✓ Xác nhận', count_current: 'Hiện：',
+            panel_receive_lbl: 'Nhập vào', panel_prep_lbl: 'Sơ chế',
+            panel_consume_lbl: 'Xuất dùng', panel_return_lbl: 'Hoàn trả',
+            panel_qty: 'Số lượng', panel_note_ph: 'Ghi chú (tùy chọn)',
+            panel_ok_receive: '✅ Xác nhận nhập kho', panel_ok_prep: '🍕 Xác nhận sơ chế',
+            panel_ok_consume: '📤 Xác nhận xuất dùng', panel_ok_return: '↩️ Xác nhận hoàn trả',
+            return_warn: '⚠️ Chỉ áp dụng cho hàng còn nguyên bao bì, chưa mở và đạt điều kiện bảo quản',
+            confirm_return: 'Xác nhận mặt hàng còn nguyên bao bì, chưa mở và đạt điều kiện bảo quản.\nHàng đã mở hoặc chia nhỏ không được hoàn trả.',
+            item_not_found: 'Không tìm thấy mặt hàng, vui lòng tải lại trang.', enter_qty: 'Vui lòng nhập số lượng lớn hơn 0.',
+            stock_short: '{loc} không đủ hàng.',
+            confirm_clear: 'Xóa toàn bộ nhật ký? Tất cả thiết bị kết nối sẽ đồng bộ xóa.',
+            toast_synced: 'Đã ghi và đồng bộ kho hàng', toast_no_change: 'Số lượng không thay đổi, không ghi',
+            toast_cleared: '✅ Đã xóa nhật ký', toast_no_logs: 'Không có nhật ký để xóa',
+            tx_error: 'Thao tác chưa hoàn thành (có thể do thiết bị khác đồng thời), vui lòng thử lại：',
+            lang_zh: '🇹🇼 Tiếng Trung', lang_vi: '🇻🇳 Tiếng Việt',
+        }
+    };
+    let currentLang = localStorage.getItem('inventoryLang') || 'zh';
+    function t(key) { return T[currentLang]?.[key] ?? T.zh[key] ?? key; }
+
+    function applyStaticLang() {
+        const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+        set('tabStock', t('tab_stock'));
+        set('tabCount', t('tab_count'));
+        updateReceiveTabLabel();
+        set('receiveSectionTitle', t('tab_receive'));
+        set('receiveSectionSub', t('rcv_sub'));
+        set('tabSales', t('tab_sales'));
+        set('salesSectionTitle', t('tab_sales'));
+        set('salesSectionSub', t('sales_sub'));
+        set('salesTodayTitle', t('sales_today_title'));
+        set('th-col-cat', t('col_cat'));
+        set('th-col-name', t('col_name'));
+        set('th-col-wh', t('col_wh'));
+        set('th-col-prep', t('col_prep'));
+        set('th-col-alert', t('col_alert'));
+        set('th-col-qty', t('col_qty'));
+        set('th-col-action', t('col_action'));
+        set('th-col-info', t('col_info'));
+        const si = document.getElementById('searchInput'); if (si) si.placeholder = t('search_ph');
+        const csi = document.getElementById('countSearchInput'); if (csi) csi.placeholder = t('search_ph');
+        set('alertBoxTitle', t('alert_title'));
+        set('alertBoxSub', t('alert_sub'));
+        set('logSectionTitle', t('log_title'));
+        set('clearLogsBtn', t('clear_logs'));
+        set('countPinTitle', t('pin_title'));
+        set('countPinSubtitle', t('pin_sub'));
+        set('countPinBtn', t('pin_btn'));
+        set('countPinError', t('pin_error'));
+        set('countSectionTitle', t('count_title'));
+        set('countSectionSub', t('count_sub'));
+        set('startFullCountBtn', t('full_count_btn'));
+        set('lockCountBtn', t('lock_btn'));
+        set('cancelFullCountBtn', t('cancel_btn'));
+        set('finishFullCountBtn', t('finish_btn'));
+        set('langZh', t('lang_zh'));
+        set('langVi', t('lang_vi'));
+        document.getElementById('langZh')?.classList.toggle('active', currentLang === 'zh');
+        document.getElementById('langVi')?.classList.toggle('active', currentLang === 'vi');
+    }
+
+    window.setLang = function(lang) {
+        currentLang = lang;
+        localStorage.setItem('inventoryLang', lang);
+        applyStaticLang();
+        renderAll();
+        if (lang === 'vi') {
+            document.getElementById('viTip')?.classList.remove('hidden');
+        }
+    };
+
+    window.closeViTip = function() {
+        document.getElementById('viTip')?.classList.add('hidden');
+    };
+
+    function setSyncStatus(state) {
+        const el = document.getElementById("syncStatus");
+        const txt = document.getElementById("syncText");
+        if (!el || !txt) return;
+        el.classList.remove("sync-syncing", "sync-synced", "sync-failed");
+        if (state === "syncing") {
+            el.classList.add("sync-syncing"); txt.textContent = t('syncing');
+        } else if (state === "connecting") {
+            el.classList.add("sync-synced"); txt.textContent = t('sync_connecting');
+        } else if (state === "synced") {
+            el.classList.add("sync-synced"); txt.textContent = t('synced');
+        } else {
+            el.classList.add("sync-failed"); txt.textContent = t('sync_failed');
+        }
+    }
+
+    function setLocked(locked) {
+        if (locked === isOffline) return;
+        isOffline = locked;
+        document.body.classList.toggle("is-offline", locked);
+        const banner = document.getElementById('offlineBanner');
+        if (banner) banner.classList.toggle('show', locked);
+        if (!locked) showToast('✅ 已恢復連線');
+        renderAll();
+    }
+
+    window.addEventListener('offline', () => setLocked(true));
+    window.addEventListener('online',  () => setLocked(false));
+    if (!navigator.onLine) setLocked(true);
+
+    function guardOnline() {
+        if (isOffline) {
+            const banner = document.getElementById('offlineBanner');
+            if (banner) {
+                banner.classList.remove('shake');
+                void banner.offsetWidth;
+                banner.classList.add('shake');
+            }
+            showToast('❌ 離線中，無法儲存');
+            return false;
+        }
+        return true;
+    }
+
+    function normalizeNumber(v, fallback = 0) {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : fallback;
+    }
+
+    function inferUnitProfile(item) {
+        const unit = item.unit || item.displayUnit || "個";
+        const name = item.name || "";
+        const m = name.match(/(\d+(?:\.\d+)?)\s*(g|ml|公克|毫升)\s*(?:包|袋|瓶|盒|桶)?/i);
+        if (m) {
+            const baseUnit = m[2].toLowerCase().includes("ml") || m[2].includes("毫") ? "ml" : "g";
+            return { displayUnit: unit, baseUnit, basePerDisplay: normalizeNumber(m[1], 1), allowBaseInput: true };
+        }
+        return { displayUnit: unit, baseUnit: unit, basePerDisplay: 1, allowBaseInput: false };
+    }
+
+    function inferDefaultLocations(item) {
+        const st = item.storageType || "常溫";
+        if (st === "冷凍") return { receive: "warehouseFrozen",  return: "warehouseFrozen"  };
+        if (st === "冷藏") return { receive: "warehouseChilled", return: "warehouseChilled" };
+        return                   { receive: "warehouseRoom",     return: "warehouseRoom"     };
+    }
+
+    function normalizeItem(raw, index = 0) {
+        const item = { ...raw };
+        const unitProfile = inferUnitProfile(item);
+        item.id = item.id ?? Date.now() + index;
+        item.category = item.category || "未分類";
+        item.name = item.name || "未命名品項";
+        item.active = item.active !== false;
+        item.sortOrder = normalizeNumber(item.sortOrder, index + 1);
+        item.displayUnit = item.displayUnit || unitProfile.displayUnit;
+        item.baseUnit = item.baseUnit || unitProfile.baseUnit;
+        item.basePerDisplay = normalizeNumber(item.basePerDisplay, unitProfile.basePerDisplay || 1);
+        item.allowBaseInput = item.baseUnit !== item.displayUnit;
+        item.enableThaw     = item.enableThaw     === true;
+        item.enableReturn   = item.enableReturn   === true;
+        item.primaryStation = item.primaryStation || "pizzaStation";
+        const locationMeta = inferDefaultLocations(item);
+        item.defaultReceiveLocation  = item.defaultReceiveLocation  || locationMeta.receive;
+        item.defaultReturnLocation   = item.defaultReturnLocation   || locationMeta.return  || item.defaultReceiveLocation;
+        item.defaultIssueLocation    = item.defaultIssueLocation    || (item.enableThaw ? "onsiteChilled" : item.defaultReceiveLocation);
+        // 消耗倉一律自動推導（未開備料→入庫倉；開備料→備料倉），忽略舊資料殘留的設定
+        item.defaultConsumeLocation  = item.enableThaw ? item.defaultIssueLocation : item.defaultReceiveLocation;
+        // 允許倉位一律自動推導（入庫倉＋備料倉＋消耗倉＋使用區），忽略舊資料殘留的清單
+        const _allowed = [item.defaultReceiveLocation, ...(item.enableThaw && item.defaultIssueLocation ? [item.defaultIssueLocation] : []), item.defaultConsumeLocation, item.primaryStation];
+        item.allowedLocations = _allowed.filter((k, i) => k && _allowed.indexOf(k) === i);
+        item.locations = { ...(item.locations || {}) };
+        Object.keys(LOCATION_DEFS).forEach(key => {
+            item.locations[key] = normalizeNumber(item.locations[key], 0);
+        });
+        item.thresholdDisplay = normalizeNumber(raw.thresholdDisplay ?? raw.threshold ?? 0, 0);
+        item.thresholdBase = normalizeNumber(item.thresholdBase, item.thresholdDisplay * item.basePerDisplay);
+        return item;
+    }
+
+    function normalizeItems(items) {
+        return (items || []).map(normalizeItem).sort((a,b) => (a.sortOrder - b.sortOrder) || String(a.name).localeCompare(String(b.name), "zh-Hant"));
+    }
+
+    function sumLocations(item, keys) {
+        return keys.reduce((sum, key) => sum + normalizeNumber(item.locations?.[key], 0), 0);
+    }
+
+    function itemStockKeys(item) {
+        const keys = [];
+        if (item.defaultReceiveLocation) keys.push(item.defaultReceiveLocation);
+        if (item.enableThaw && item.defaultIssueLocation && !keys.includes(item.defaultIssueLocation)) {
+            keys.push(item.defaultIssueLocation);
+        }
+        return keys;
+    }
+
+    let _stockCache = new Map();
+    function cachedSumLocations(item) {
+        if (!_stockCache.has(item.id)) _stockCache.set(item.id, sumLocations(item, itemStockKeys(item)));
+        return _stockCache.get(item.id);
+    }
+
+    function getAllCategories() {
+        const set = new Set(["全部"]);
+        (settings.categories || []).forEach(c => c && set.add(c));
+        inventoryData.forEach(i => i.category && set.add(i.category));
+        return [...set];
+    }
+
+    function itemDisplayName(item) {
+        return currentLang === 'vi' && item.nameVi ? item.nameVi : item.name;
+    }
+
+    function itemDisplayCategory(cat) {
+        if (currentLang !== 'vi') return cat;
+        return (settings.categoryTranslations || {})[cat] || cat;
+    }
+
+    function toDisplayQty(item, baseQty) {
+        const per = normalizeNumber(item.basePerDisplay, 1) || 1;
+        return roundQty(baseQty / per);
+    }
+
+    function roundQty(n) {
+        return parseFloat((normalizeNumber(n, 0)).toFixed(3));
+    }
+
+    function formatQty(item, baseQty, options = {}) {
+        const base = roundQty(baseQty);
+        const display = toDisplayQty(item, baseQty);
+        if (item.baseUnit !== item.displayUnit && item.basePerDisplay !== 1) {
+            if (options.compact) return `${display} ${item.displayUnit}`;
+            return `${display} ${item.displayUnit} / ${base} ${item.baseUnit}`;
+        }
+        return `${base} ${item.baseUnit}`;
+    }
+
+    function qtyToBase(item, val, unit) {
+        const n = normalizeNumber(val, NaN);
+        if (!Number.isFinite(n) || n <= 0) return NaN;
+        if (unit === item.displayUnit && item.displayUnit !== item.baseUnit) return n * item.basePerDisplay;
+        return n;
+    }
+
+    function escapeHtml(str) {
+        return String(str ?? "").replace(/[&<>'"]/g, s => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[s]));
+    }
+
+    function showToast(text) {
+        const toast = document.getElementById("toast");
+        toast.textContent = text;
+        toast.classList.add("show");
+        window.clearTimeout(showToast._timer);
+        showToast._timer = window.setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    onSnapshot(docRef, { includeMetadataChanges: true }, (docSnap) => {
+        const meta = docSnap.metadata;
+        if (!meta.fromCache) setLocked(false);
+        setSyncStatus(meta.hasPendingWrites ? "syncing" : meta.fromCache ? "connecting" : "synced");
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            settings = { categories: [], locations: Object.values(LOCATION_DEFS), ...(data.settings || {}) };
+            inventoryData = normalizeItems(data.items || []);
+        } else {
+            inventoryData = [];
+            settings = { categories: [], locations: Object.values(LOCATION_DEFS) };
+        }
+        renderAll();
+        updateLastFullCountInfo();
+    }, (error) => {
+        console.error("讀取資料失敗:", error);
+        setSyncStatus("failed");
+        setLocked(true);
+        if (inventoryData.length === 0) {
+            document.getElementById("inventoryBody").innerHTML = `<tr><td colspan="8" class="loading-text" style="color:red;">❌ 無法連接到資料庫，請檢查網路。</td></tr>`;
+        }
+    });
+
+    onSnapshot(query(logsRef, orderBy("ts", "desc"), fsLimit(80)), async (snap) => {
+        globalLogs = snap.docs.map(d => d.data());
+        renderLogs();
+        for (const [itemId, limit] of Object.entries(logExpandState)) {
+            if (!limit) continue;
+            delete itemLogsCache[itemId];
+            await fetchItemLogs(itemId);
+            const content = renderItemLogContent(itemId, limit);
+            const subrowContent = document.getElementById(`log-subrow-content-${itemId}`);
+            if (subrowContent) subrowContent.innerHTML = content;
+            const cardLog = document.getElementById(`card-log-${itemId}`);
+            if (cardLog && !cardLog.classList.contains("hidden")) cardLog.innerHTML = content;
+        }
+    });
+
+    async function runStockTransaction(mutate, options = {}) {
+        if (!guardOnline()) return false;
+        let mutateResult;
+        try {
+            await runTransaction(db, async (tx) => {
+                const snap = await tx.get(docRef);
+                const data = snap.exists() ? snap.data() : { items: [], settings: {} };
+                const items = normalizeItems(data.items || []);
+                const pendingLogs = [];
+                const txSettings = { categories: [], locations: Object.values(LOCATION_DEFS), ...(data.settings || {}) };
+                mutateResult = mutate(items, pendingLogs, txSettings);
+                if (mutateResult === false || mutateResult === 'noop') return;
+                tx.set(docRef, {
+                    schemaVersion: SCHEMA_VERSION,
+                    items: normalizeItems(items),
+                    settings: txSettings,
+                    lastUpdated: new Date().toISOString()
+                });
+                pendingLogs.forEach(logData => tx.set(doc(logsRef), logData));
+            });
+            if (mutateResult === false) return false;
+            if (mutateResult !== 'noop' && !options.silent) showToast(t('toast_synced'));
+            return true;
+        } catch (error) {
+            alert(t('tx_error') + error.message);
+            return false;
+        }
+    }
+
+    function pushLog(pendingLogs, text, meta = {}) {
+        const now = new Date();
+        pendingLogs.push({
+            id: `${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
+            ts: now.getTime(),
+            time: now.toLocaleString("zh-TW", { hour12: false }),
+            text,
+            ...meta
+        });
+    }
+
+    function filteredItems() {
+        const q = document.getElementById("searchInput")?.value.trim().toLowerCase() || "";
+        return inventoryData.filter(item => {
+            if (item.active === false) return false;
+            if (currentCategoryFilter !== "全部" && item.category !== currentCategoryFilter) return false;
+            if (!q) return true;
+            return [item.name, item.nameVi || '', item.category, item.displayUnit, item.baseUnit].join(" ").toLowerCase().includes(q);
+        });
+    }
+
+    function renderAll() {
+        renderFilters();
+        renderInventory();
+        renderReceiveOrders();
+        updateReceiveTabLabel();
+        renderSalesView();
+        renderAnnouncement();
+    }
+
+    // ── 公告橫幅（大聲公）─────────────────────────────────
+    let _annLastKey = null;
+    function renderAnnouncement() {
+        const bar = document.getElementById('announceBar');
+        if (!bar) return;
+        const a = settings.announcement;
+        const now = Date.now();
+        let show = a && a.enabled === true && a.text;
+        if (show && a.startAt && now < new Date(a.startAt).getTime()) show = false;
+        if (show && a.endAt && now > new Date(a.endAt).getTime()) show = false;
+        if (!show) { bar.style.display = 'none'; _annLastKey = null; return; }
+        // 只有內容或樣式改變才重寫 DOM，避免每次 timer 重置跑馬燈動畫
+        const key = `${a.mode}|${a.text}`;
+        if (key === _annLastKey && bar.style.display !== 'none') return;
+        _annLastKey = key;
+        bar.className = 'announce-bar ' + (a.mode === 'static' ? 'mode-static' : 'mode-marquee');
+        document.getElementById('announceText').textContent = a.text;
+        bar.style.display = 'flex';
+    }
+    // 每 30 秒重新評估上／下稿時間，讓排程到點自動生效
+    setInterval(renderAnnouncement, 30000);
+
+    window.debouncedRenderInventory = (() => { let t; return () => { clearTimeout(t); t = setTimeout(renderInventory, 150); }; })();
+
+    function renderFilters() {
+        const wrap = document.getElementById("filterContainer");
+        if (!wrap) return;
+        const cats = getAllCategories();
+        if (!cats.includes(currentCategoryFilter)) currentCategoryFilter = "全部";
+        wrap.innerHTML = cats.map(cat => {
+            const display = cat === '全部' ? t('cat_all') : escapeHtml(itemDisplayCategory(cat));
+            return `<button class="filter-btn ${cat === currentCategoryFilter ? "active" : ""}" type="button" data-cat="${escapeHtml(cat)}">${display}</button>`;
+        }).join("");
+    }
+
+    document.getElementById("filterContainer").addEventListener("click", e => {
+        const btn = e.target.closest("button[data-cat]");
+        if (btn) window.filterCategory(btn.dataset.cat);
+    });
+
+    function lowStockItems() {
+        return inventoryData.filter(item => item.active !== false && item.thresholdBase > 0 && cachedSumLocations(item) < item.thresholdBase);
+    }
+
+    function renderInventory() {
+        _stockCache = new Map();
+        const tbody = document.getElementById("inventoryBody");
+        const mobile = document.getElementById("mobileCards");
+        const alertBox = document.getElementById("alertBox");
+        const alertList = document.getElementById("alertList");
+        const items = filteredItems();
+        const lows = lowStockItems();
+        if (lows.length > 0) {
+            alertList.innerHTML = lows.map(item => `<li>【${escapeHtml(itemDisplayCategory(item.category))}】${escapeHtml(itemDisplayName(item))}：總庫存剩餘 <strong>${formatQty(item, cachedSumLocations(item))}</strong>，安全線 ${formatQty(item, item.thresholdBase)}</li>`).join("");
+            alertBox.style.display = "block";
+        } else {
+            alertBox.style.display = "none";
+        }
+        if (!items.length) {
+            tbody.innerHTML = `<tr><td colspan="8" class="loading-text">${t('no_items')}</td></tr>`;
+            mobile.innerHTML = `<div class="loading-text">${t('no_items')}</div>`;
+            renderLogs();
+            return;
+        }
+        tbody.innerHTML = items.map(renderTableRow).join("");
+        mobile.innerHTML = items.map(renderMobileCard).join("");
+        Object.entries(cardPanelState).forEach(([itemId, type]) => {
+            if (!type) return;
+            const item = inventoryData.find(i => String(i.id) === String(itemId));
+            if (!item) return;
+            document.getElementById(`actbtn-${type}-${itemId}`)?.classList.add("active");
+            const panel = document.getElementById(`card-panel-${itemId}`);
+            if (panel) { panel.innerHTML = renderCardPanel(item, type); panel.classList.remove("hidden"); }
+        });
+        (async () => {
+            for (const [itemId, limit] of Object.entries(logExpandState)) {
+                if (!limit) continue;
+                if (!itemLogsCache[itemId]) await fetchItemLogs(itemId);
+                const content = renderItemLogContent(itemId, limit);
+                const subrow = document.getElementById(`log-subrow-${itemId}`);
+                if (subrow) {
+                    document.getElementById(`log-subrow-content-${itemId}`).innerHTML = content;
+                    subrow.classList.remove("hidden");
+                    const btn = document.getElementById(`log-toggle-table-${itemId}`);
+                    if (btn) { btn.textContent = "收合"; btn.classList.add("open"); }
+                }
+                const cardLog = document.getElementById(`card-log-${itemId}`);
+                if (cardLog) {
+                    cardLog.innerHTML = content;
+                    cardLog.classList.remove("hidden");
+                    const btn = document.getElementById(`log-toggle-card-${itemId}`);
+                    if (btn) { btn.textContent = "▲ 收合明細"; btn.classList.add("open"); }
+                }
+            }
+        })();
+        renderLogs();
+    }
+
+    function renderTableRow(item) {
+        const warehouseBase = cachedSumLocations(item);
+        const isLow = item.active !== false && item.thresholdBase > 0 && warehouseBase < item.thresholdBase;
+        const dis = item.active === false ? "disabled" : "";
+        const hasBase = item.allowBaseInput && item.baseUnit !== item.displayUnit;
+        const unitChips = [item.displayUnit, ...(hasBase ? [item.baseUnit] : [])].map((u, i) =>
+            `<label><input type="radio" name="qact-unit-${item.id}" value="${escapeHtml(u)}" ${i === 0 ? "checked" : ""}>${escapeHtml(u)}</label>`
+        ).join("");
+        const receiveLoc  = LOCATION_DEFS[item.defaultReceiveLocation]?.short || item.defaultReceiveLocation;
+        const issueLoc    = LOCATION_DEFS[item.defaultIssueLocation]?.short   || item.defaultIssueLocation;
+        const consumeFrom = LOCATION_DEFS[item.defaultConsumeLocation]?.short || item.defaultConsumeLocation;
+        const retLoc      = LOCATION_DEFS[item.defaultReturnLocation]?.short  || item.defaultReturnLocation || receiveLoc;
+        const infoLines = [
+            `${t('btn_receive')} → ${receiveLoc}`,
+            ...(item.enableThaw ? [`${t('btn_prep')} ${receiveLoc} → ${issueLoc}`] : []),
+            `${t('btn_consume')} ${consumeFrom} → ${t('to_exit')}`,
+            ...(item.enableReturn ? [`${t('btn_return')} ${consumeFrom} → ${retLoc}`] : []),
+            `${t('btn_waste')} ${consumeFrom} → ${t('to_exit')}`,
+        ];
+        return `
+            <tr class="${isLow ? "low-stock" : ""} ${item.active === false ? "inactive-row" : ""}">
+                <td><span class="badge badge-muted">${escapeHtml(itemDisplayCategory(item.category))}</span></td>
+                <td class="name-cell"><strong>${escapeHtml(itemDisplayName(item))}</strong><div class="help">${escapeHtml(item.basePerDisplay)} ${escapeHtml(item.baseUnit)} = 1 ${escapeHtml(item.displayUnit)}</div></td>
+                <td>${renderLocationStack(item, WAREHOUSE_KEYS)}</td>
+                <td>${item.enableThaw ? renderSingleLocationCell(item, item.defaultIssueLocation) : '<div class="stock-stack" style="color:#ccc;font-size:12px;">—</div>'}</td>
+                <td>${item.active === false
+                    ? `<span class="badge badge-off">${t('badge_off')}</span>`
+                    : isLow
+                        ? `<span class="badge badge-low">${t('badge_low')}</span><div style="font-size:11px;color:#9aaba3;margin-top:3px;">${t('safety')} ${formatQty(item, item.thresholdBase, { compact: true })}</div>`
+                        : `<span class="badge badge-ok">${t('badge_ok')}</span><div style="font-size:11px;color:#9aaba3;margin-top:3px;">${t('safety')} ${formatQty(item, item.thresholdBase, { compact: true })}</div>`}
+                </td>
+                <td>
+                    <div class="qact-input-wrap">
+                        <input class="qact-qty" id="qact-qty-${item.id}" type="text" inputmode="decimal" placeholder="0" ${dis}>
+                        <div class="unit-chips">${unitChips}</div>
+                    </div>
+                </td>
+                <td class="qact-td">
+                    <div class="qact-btns">
+                        ${settings.showReceiveAction !== false ? `<button class="qact-btn qact-receive" type="button" ${dis} onclick="execQuickAction(${item.id},'receive')">${t('btn_receive')}</button>` : ""}
+                        ${item.enableThaw ? `<button class="qact-btn qact-prep" type="button" ${dis} onclick="execQuickAction(${item.id},'prep')">${t('btn_prep')}</button>` : ""}
+                        <button class="qact-btn qact-consume" type="button" ${dis} onclick="execQuickAction(${item.id},'consume')">${t('btn_consume')}</button>
+                        ${item.enableReturn ? `<button class="qact-btn qact-return" type="button" ${dis} onclick="execQuickAction(${item.id},'return')">${t('btn_return')}</button>` : ""}
+                        <button class="qact-btn qact-waste" type="button" ${dis} onclick="execQuickAction(${item.id},'waste')">${t('btn_waste')}</button>
+                    </div>
+                </td>
+                <td>
+                    <div class="info-cell-btns">
+                        <div style="position:relative;">
+                            <button class="qact-info" type="button" onclick="toggleInfoPop(event,${item.id})">${t('btn_info')}</button>
+                            <div class="info-pop hidden" id="info-pop-${item.id}">${infoLines.map(l => escapeHtml(l)).join("<br>")}${item.notes ? `<div class="info-notes"><span style="opacity:0.7;">備註：</span>${escapeHtml(item.notes)}</div>` : ""}</div>
+                        </div>
+                        <button class="qact-log-toggle" id="log-toggle-table-${item.id}" type="button" onclick="toggleItemLog(${item.id})">${t('detail_open')}</button>
+                    </div>
+                </td>
+            </tr>
+            <tr class="log-subrow hidden" id="log-subrow-${item.id}">
+                <td colspan="9"><div class="log-subrow-inner" id="log-subrow-content-${item.id}"></div></td>
+            </tr>`;
+    }
+
+    function renderLocationStack(item, keys) {
+        const allowed = item.allowedLocations || [];
+        // 除了允許倉位，殘留庫存 > 0 的倉位也顯示（避免改倉位後舊庫存被隱藏）
+        const filtered = keys.filter(k => allowed.includes(k) || normalizeNumber(item.locations?.[k], 0) > 0);
+        if (!filtered.length) return '<div class="stock-stack" style="color:#ccc;font-size:12px;">—</div>';
+        return `<div class="stock-stack">${filtered.map(key => `<div class="stock-line"><span>${LOCATION_DEFS[key].short}</span><strong>${formatQty(item, normalizeNumber(item.locations?.[key], 0), { compact: true })}</strong></div>`).join("")}</div>`;
+    }
+
+    function renderSingleLocationCell(item, key) {
+        const def = LOCATION_DEFS[key];
+        if (!def) return '<div class="stock-stack" style="color:#ccc;font-size:12px;">—</div>';
+        return `<div class="stock-stack"><div class="stock-line"><span>${def.short}</span><strong>${formatQty(item, normalizeNumber(item.locations?.[key], 0), { compact: true })}</strong></div></div>`;
+    }
+
+    function renderMobileCard(item) {
+        const warehouseBase = cachedSumLocations(item);
+        const isLow = item.active !== false && item.thresholdBase > 0 && warehouseBase < item.thresholdBase;
+        const prepKeys = item.enableThaw && item.defaultIssueLocation ? [item.defaultIssueLocation] : [];
+        const locKeys = [...WAREHOUSE_KEYS, ...prepKeys].filter((key, i, arr) =>
+            arr.indexOf(key) === i && LOCATION_DEFS[key] &&
+            (item.allowedLocations.includes(key) || normalizeNumber(item.locations?.[key], 0) > 0));
+        const dis = item.active === false ? "disabled" : "";
+        return `
+            <article class="item-card ${item.active === false ? "inactive-row" : ""}">
+                <div class="card-head">
+                    <div><div class="card-title">${escapeHtml(itemDisplayName(item))}</div><div class="card-meta">${escapeHtml(itemDisplayCategory(item.category))}｜${escapeHtml(item.basePerDisplay)} ${escapeHtml(item.baseUnit)} = 1 ${escapeHtml(item.displayUnit)}</div></div>
+                    ${item.active === false ? `<span class="badge badge-off">${t('badge_off')}</span>` : isLow ? `<span class="badge badge-low">${t('badge_low_s')}</span>` : `<span class="badge badge-ok">${t('badge_ok_s')}</span>`}
+                </div>
+                <div class="location-grid">${locKeys.map(key => `<div class="location-tile"><div class="loc">${LOCATION_DEFS[key].name}</div><div class="qty">${formatQty(item, normalizeNumber(item.locations?.[key], 0))}</div></div>`).join("")}</div>
+                ${item.notes ? `<div class="card-notes"><span style="opacity:0.6;">備註：</span>${escapeHtml(item.notes)}</div>` : ""}
+                <div class="card-actions">
+                    ${settings.showReceiveAction !== false ? `<button class="card-act-btn act-receive" id="actbtn-receive-${item.id}" type="button" ${dis} onclick="toggleCardAction(${item.id},'receive')">${t('btn_receive_c')}</button>` : ""}
+                    ${item.enableThaw ? `<button class="card-act-btn act-prep" id="actbtn-prep-${item.id}" type="button" ${dis} onclick="toggleCardAction(${item.id},'prep')">${t('btn_prep_c')}</button>` : ""}
+                    <button class="card-act-btn act-consume" id="actbtn-consume-${item.id}" type="button" ${dis} onclick="toggleCardAction(${item.id},'consume')">${t('btn_consume_c')}</button>
+                    ${item.enableReturn ? `<button class="card-act-btn act-return" id="actbtn-return-${item.id}" type="button" ${dis} onclick="toggleCardAction(${item.id},'return')">${t('btn_return_c')}</button>` : ""}
+                    <button class="card-act-btn act-waste" id="actbtn-waste-${item.id}" type="button" ${dis} onclick="toggleCardAction(${item.id},'waste')">${t('btn_waste_c')}</button>
+                </div>
+                <div class="card-panel hidden" id="card-panel-${item.id}"></div>
+                <button class="card-log-toggle" id="log-toggle-card-${item.id}" type="button" onclick="toggleItemLog(${item.id})">${t('detail_expand')}</button>
+                <div class="card-log hidden" id="card-log-${item.id}"></div>
+            </article>`;
+    }
+
+    window.execQuickAction = function(itemId, type) {
+        if (!guardOnline()) return;
+        const item = inventoryData.find(i => String(i.id) === String(itemId));
+        if (!item) return;
+        if (type === "return" && !confirm(t('confirm_return'))) return;
+        if (type === "waste") {
+            if (normalizeNumber(document.getElementById(`qact-qty-${itemId}`)?.value, 0) <= 0) { alert(t('enter_qty')); return; }
+            openWasteModal(itemId);
+            return;
+        }
+        const qtyVal = document.getElementById(`qact-qty-${itemId}`)?.value;
+        const unit = document.querySelector(`input[name="qact-unit-${itemId}"]:checked`)?.value || item.displayUnit;
+        runStockTransaction((items, txLogs) => {
+            const it = items.find(i => String(i.id) === String(itemId));
+            if (!it) { alert(t('item_not_found')); return false; }
+            const baseQty = roundQty(qtyToBase(it, qtyVal, unit));
+            if (!Number.isFinite(baseQty) || baseQty <= 0) { alert(t('enter_qty')); return false; }
+            const qtyText  = formatQty(it, baseQty);
+            const recLoc   = it.defaultReceiveLocation;
+            const retLoc   = it.defaultReturnLocation || recLoc;
+            const station  = it.primaryStation || "pizzaStation";
+            if (type === "receive") {
+                it.locations[recLoc] = roundQty(normalizeNumber(it.locations[recLoc], 0) + baseQty);
+                pushLog(txLogs, `📦 進貨入庫：【${it.name}】${LOCATION_DEFS[recLoc].name} +${qtyText}`, { itemId: it.id, actionType: type, baseQty, toLocation: recLoc });
+            } else if (type === "prep") {
+                const fromLoc = recLoc;
+                const toLoc   = it.defaultIssueLocation || "onsiteChilled";
+                if (normalizeNumber(it.locations[fromLoc], 0) < baseQty) { alert(t('stock_short').replace('{loc}', LOCATION_DEFS[fromLoc]?.name || fromLoc)); return false; }
+                it.locations[fromLoc] = roundQty(it.locations[fromLoc] - baseQty);
+                it.locations[toLoc]   = roundQty(normalizeNumber(it.locations[toLoc], 0) + baseQty);
+                pushLog(txLogs, `🍕 備料：【${it.name}】${LOCATION_DEFS[fromLoc]?.name || fromLoc} → ${LOCATION_DEFS[toLoc]?.name || toLoc}，${qtyText}`, { itemId: it.id, actionType: type, baseQty, fromLocation: fromLoc, toLocation: toLoc });
+            } else if (type === "consume") {
+                const fromLoc = it.defaultConsumeLocation || "prep";
+                if (normalizeNumber(it.locations[fromLoc], 0) < baseQty) { alert(t('stock_short').replace('{loc}', LOCATION_DEFS[fromLoc]?.name || fromLoc)); return false; }
+                it.locations[fromLoc] = roundQty(it.locations[fromLoc] - baseQty);
+                it.locations[station] = roundQty(normalizeNumber(it.locations[station], 0) + baseQty);
+                pushLog(txLogs, `📤 消耗：【${it.name}】${LOCATION_DEFS[fromLoc]?.name || fromLoc} -${qtyText}`, { itemId: it.id, actionType: type, baseQty, fromLocation: fromLoc, toLocation: station });
+            } else if (type === "return") {
+                const fromLoc = it.defaultConsumeLocation || "prep";
+                if (normalizeNumber(it.locations[fromLoc], 0) < baseQty) { alert(t('stock_short').replace('{loc}', LOCATION_DEFS[fromLoc]?.name || fromLoc)); return false; }
+                it.locations[fromLoc] = roundQty(it.locations[fromLoc] - baseQty);
+                it.locations[retLoc]  = roundQty(normalizeNumber(it.locations[retLoc], 0) + baseQty);
+                pushLog(txLogs, `↩️ 回放：【${it.name}】${LOCATION_DEFS[fromLoc]?.name || fromLoc} → ${LOCATION_DEFS[retLoc]?.name || retLoc}，${qtyText}`, { itemId: it.id, actionType: type, baseQty, fromLocation: fromLoc, toLocation: retLoc });
+            }
+        }).then(ok => {
+            if (!ok) return;
+            const inp = document.getElementById(`qact-qty-${itemId}`);
+            if (inp) inp.value = "";
+        });
+    };
+
+    function execWasteQuick(itemId, reason) {
+        if (!guardOnline()) return;
+        const item = inventoryData.find(i => String(i.id) === String(itemId));
+        if (!item) return;
+        const qtyVal = document.getElementById(`qact-qty-${itemId}`)?.value;
+        const unit = document.querySelector(`input[name="qact-unit-${itemId}"]:checked`)?.value || item.displayUnit;
+        runStockTransaction((items, txLogs) => {
+            const it = items.find(i => String(i.id) === String(itemId));
+            if (!it) { alert(t('item_not_found')); return false; }
+            const baseQty = roundQty(qtyToBase(it, qtyVal, unit));
+            if (!Number.isFinite(baseQty) || baseQty <= 0) { alert(t('enter_qty')); return false; }
+            const qtyText = formatQty(it, baseQty);
+            const fromLoc = it.defaultConsumeLocation || "prep";
+            if (normalizeNumber(it.locations[fromLoc], 0) < baseQty) { alert(t('stock_short').replace('{loc}', LOCATION_DEFS[fromLoc]?.name || fromLoc)); return false; }
+            it.locations[fromLoc] = roundQty(it.locations[fromLoc] - baseQty);
+            pushLog(txLogs, `🗑 報廢：【${it.name}】${LOCATION_DEFS[fromLoc]?.name || fromLoc} -${qtyText}（${reason}）`, { itemId: it.id, actionType: "waste", baseQty, fromLocation: fromLoc, reason });
+        }).then(ok => {
+            if (!ok) return;
+            const inp = document.getElementById(`qact-qty-${itemId}`);
+            if (inp) inp.value = "";
+        });
+    }
+
+    // ── 報廢原因彈窗 ─────────────────────────────────────
+    let _wasteCtx = null;
+    const WASTE_REASONS = [
+        { key: 'expired', zh: '過期', tKey: 'w_expired' },
+        { key: 'damaged', zh: '損壞', tKey: 'w_damaged' },
+        { key: 'other',   zh: '',    tKey: 'w_other' },
+    ];
+
+    function renderWasteChips() {
+        document.getElementById('wasteReasonChips').innerHTML = WASTE_REASONS.map(r =>
+            `<button type="button" class="wchip ${_wasteCtx?.reason === r.key ? 'active' : ''}" onclick="selectWasteReason('${r.key}')">${escapeHtml(t(r.tKey))}</button>`).join('');
+    }
+
+    window.openWasteModal = function(itemId) {
+        _wasteCtx = { itemId, reason: null };
+        const item = inventoryData.find(i => String(i.id) === String(itemId));
+        document.getElementById('wasteModalTitle').textContent = t('waste_modal_title');
+        document.getElementById('wasteModalItem').textContent = item ? itemDisplayName(item) : '';
+        const txt = document.getElementById('wasteReasonText');
+        txt.value = '';
+        txt.style.display = 'none';
+        txt.placeholder = t('waste_other_ph');
+        document.getElementById('wasteCancelBtn').textContent = t('cancel_btn');
+        document.getElementById('wasteOkBtn').textContent = t('panel_ok_waste');
+        renderWasteChips();
+        document.getElementById('wasteModal').style.display = 'flex';
+    };
+
+    window.selectWasteReason = function(key) {
+        if (!_wasteCtx) return;
+        _wasteCtx.reason = key;
+        renderWasteChips();
+        const txt = document.getElementById('wasteReasonText');
+        txt.style.display = key === 'other' ? 'block' : 'none';
+        if (key === 'other') txt.focus();
+    };
+
+    window.closeWasteModal = function() {
+        _wasteCtx = null;
+        document.getElementById('wasteModal').style.display = 'none';
+    };
+
+    window.confirmWasteModal = function() {
+        if (!_wasteCtx) return;
+        const key = _wasteCtx.reason;
+        if (!key) { showToast(t('waste_reason_need')); return; }
+        const def = WASTE_REASONS.find(r => r.key === key);
+        const reason = key === 'other' ? document.getElementById('wasteReasonText').value.trim() : def.zh;
+        if (!reason) { showToast(t('waste_reason_need')); return; }
+        const itemId = _wasteCtx.itemId;
+        closeWasteModal();
+        execWasteQuick(itemId, reason);
+    };
+
+    let _openInfoPop = null;
+    window.toggleInfoPop = function(event, itemId) {
+        event.stopPropagation();
+        const pop = document.getElementById(`info-pop-${itemId}`);
+        if (!pop) return;
+        const isHidden = pop.classList.contains("hidden");
+        if (_openInfoPop && _openInfoPop !== pop) _openInfoPop.classList.add("hidden");
+        _openInfoPop = null;
+        if (isHidden) {
+            pop.classList.remove("hidden");
+            _openInfoPop = pop;
+        } else {
+            pop.classList.add("hidden");
+        }
+    };
+    // pointerdown：iPad/iOS 點在非互動元素上不會派發 document click，改用 pointerdown 才能點旁邊關閉
+    document.addEventListener("pointerdown", (e) => {
+        if (_openInfoPop && !_openInfoPop.contains(e.target) && !e.target.closest('.qact-info')) {
+            _openInfoPop.classList.add("hidden");
+            _openInfoPop = null;
+        }
+    });
+
+    async function fetchItemLogs(itemId) {
+        const sevenDaysAgo = Date.now() - 7 * 24 * 3600 * 1000;
+        let snap;
+        try {
+            snap = await getDocs(query(logsRef, where("itemId", "==", Number(itemId)), orderBy("ts", "desc"), fsLimit(300)));
+        } catch {
+            snap = await getDocs(query(logsRef, where("itemId", "==", Number(itemId)), fsLimit(300)));
+        }
+        itemLogsCache[itemId] = snap.docs.map(d => d.data())
+            .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+            .filter(l => l.ts == null || l.ts >= sevenDaysAgo);
+    }
+
+    function renderItemLogContent(itemId, limit) {
+        const all = itemLogsCache[itemId] || [];
+        if (!all.length) return `<div class="log-empty">${t('no_log_7d')}</div>`;
+        const shown = all.slice(0, limit);
+        const rows = shown.map(l => `<div class="log-entry"><span class="log-time">${escapeHtml(l.time)}</span><span class="log-text">${escapeHtml(l.text)}</span></div>`).join('');
+        const more = all.length > limit
+            ? `<button class="log-more-btn" type="button" onclick="loadMoreItemLog(${itemId})">${t('log_more').replace('{shown}', shown.length).replace('{total}', all.length)}</button>`
+            : '';
+        return rows + more;
+    }
+
+    window.toggleItemLog = async function(itemId) {
+        const isOpen = logExpandState[itemId] > 0;
+        if (isOpen) {
+            logExpandState[itemId] = 0;
+            document.getElementById(`log-subrow-${itemId}`)?.classList.add("hidden");
+            document.getElementById(`card-log-${itemId}`)?.classList.add("hidden");
+            const tableBtn = document.getElementById(`log-toggle-table-${itemId}`);
+            if (tableBtn) { tableBtn.textContent = t('detail_open'); tableBtn.classList.remove("open"); }
+            const cardBtn = document.getElementById(`log-toggle-card-${itemId}`);
+            if (cardBtn) { cardBtn.textContent = t('detail_expand'); cardBtn.classList.remove("open"); }
+        } else {
+            logExpandState[itemId] = 10;
+            const loading = `<div class="log-empty">${t('loading_log')}</div>`;
+            const subrow = document.getElementById(`log-subrow-${itemId}`);
+            if (subrow) {
+                document.getElementById(`log-subrow-content-${itemId}`).innerHTML = loading;
+                subrow.classList.remove("hidden");
+            }
+            const cardLog = document.getElementById(`card-log-${itemId}`);
+            if (cardLog) { cardLog.innerHTML = loading; cardLog.classList.remove("hidden"); }
+            const tableBtn = document.getElementById(`log-toggle-table-${itemId}`);
+            if (tableBtn) { tableBtn.textContent = t('detail_close'); tableBtn.classList.add("open"); }
+            const cardBtn = document.getElementById(`log-toggle-card-${itemId}`);
+            if (cardBtn) { cardBtn.textContent = t('detail_collapse'); cardBtn.classList.add("open"); }
+            await fetchItemLogs(itemId);
+            const content = renderItemLogContent(itemId, 10);
+            if (subrow) document.getElementById(`log-subrow-content-${itemId}`).innerHTML = content;
+            if (cardLog && !cardLog.classList.contains("hidden")) cardLog.innerHTML = content;
+        }
+    };
+
+    window.loadMoreItemLog = function(itemId) {
+        logExpandState[itemId] = (logExpandState[itemId] || 10) + 10;
+        const content = renderItemLogContent(itemId, logExpandState[itemId]);
+        const subrowContent = document.getElementById(`log-subrow-content-${itemId}`);
+        if (subrowContent) subrowContent.innerHTML = content;
+        const cardLog = document.getElementById(`card-log-${itemId}`);
+        if (cardLog && !cardLog.classList.contains("hidden")) cardLog.innerHTML = content;
+    };
+
+    const cardPanelState = {};
+    const logExpandState = {};
+
+    window.toggleCardAction = function(itemId, type) {
+        if (!guardOnline()) return;
+        const item = inventoryData.find(i => String(i.id) === String(itemId));
+        if (!item) return;
+        const panel = document.getElementById(`card-panel-${itemId}`);
+        if (!panel) return;
+        const current = cardPanelState[itemId];
+        ["receive", "prep", "consume", "return"].forEach(t => document.getElementById(`actbtn-${t}-${itemId}`)?.classList.remove("active"));
+        if (current === type) {
+            cardPanelState[itemId] = null;
+            panel.classList.add("hidden");
+            panel.innerHTML = "";
+            return;
+        }
+        cardPanelState[itemId] = type;
+        document.getElementById(`actbtn-${type}-${itemId}`)?.classList.add("active");
+        panel.innerHTML = renderCardPanel(item, type);
+        panel.classList.remove("hidden");
+        panel.querySelector(".panel-qty-input")?.focus();
+    };
+
+    function renderCardPanel(item, type) {
+        const hasBase = item.allowBaseInput && item.baseUnit !== item.displayUnit;
+        const unitChips = [item.displayUnit, ...(hasBase ? [item.baseUnit] : [])].map((u, i) =>
+            `<label><input type="radio" name="card-unit-${item.id}" value="${escapeHtml(u)}" ${i === 0 ? "checked" : ""}>${escapeHtml(u)}</label>`
+        ).join("");
+
+        const qtyRow = `
+            <div class="panel-row">
+                <span class="panel-label">${t('panel_qty')}</span>
+                <input class="panel-input panel-qty-input" id="card-qty-${item.id}" type="text" inputmode="decimal" placeholder="0">
+                <div class="unit-chips">${unitChips}</div>
+            </div>
+            <input class="panel-note" type="text" id="card-note-${item.id}" placeholder="${t('panel_note_ph')}">`;
+
+        if (type === "receive") {
+            const loc = LOCATION_DEFS[item.defaultReceiveLocation];
+            return `
+                <div class="panel-row"><span class="panel-label">${t('panel_receive_lbl')}</span><span class="panel-loc-info" style="background:#e8f5e9;color:#2e7d32;">${loc?.name || item.defaultReceiveLocation}</span></div>
+                ${qtyRow}
+                <button class="panel-submit" type="button" style="background:#2e7d32;color:#fff;" onclick="submitCardAction(${item.id},'receive')">${t('panel_ok_receive')}</button>`;
+        }
+
+        if (type === "prep") {
+            const fromDef = LOCATION_DEFS[item.defaultReceiveLocation];
+            const toDef   = LOCATION_DEFS[item.defaultIssueLocation] || LOCATION_DEFS["onsiteChilled"];
+            return `
+                <div class="panel-row"><span class="panel-label">${t('panel_prep_lbl')}</span><span class="panel-loc-info" style="background:#e0f2f1;color:#006064;">${fromDef?.name || item.defaultReceiveLocation}</span><span style="font-size:12px;color:#999;">→</span><span class="panel-loc-info" style="background:#e8f5e9;color:#2e7d32;">${toDef?.name}</span></div>
+                ${qtyRow}
+                <button class="panel-submit" type="button" style="background:#006064;color:#fff;" onclick="submitCardAction(${item.id},'prep')">${t('panel_ok_prep')}</button>`;
+        }
+
+        if (type === "consume") {
+            const fromKey = item.defaultConsumeLocation || "prep";
+            const fromDef = LOCATION_DEFS[fromKey];
+            const staDef  = LOCATION_DEFS[item.primaryStation] || LOCATION_DEFS["pizzaStation"];
+            return `
+                <div class="panel-row"><span class="panel-label">${t('panel_consume_lbl')}</span><span class="panel-loc-info" style="background:#ffebee;color:#c62828;">${fromDef?.name || fromKey}</span></div>
+                ${qtyRow}
+                <button class="panel-submit" type="button" style="background:#c62828;color:#fff;" onclick="submitCardAction(${item.id},'consume')">${t('panel_ok_consume')}</button>`;
+        }
+
+        if (type === "return") {
+            const fromKey = item.defaultConsumeLocation || "prep";
+            const fromDef = LOCATION_DEFS[fromKey];
+            const retKey  = item.defaultReturnLocation || item.defaultReceiveLocation;
+            const retDef  = LOCATION_DEFS[retKey];
+            return `
+                <div class="panel-row"><span class="panel-label">${t('panel_return_lbl')}</span><span class="panel-loc-info" style="background:#fff3e0;color:#e65100;">${fromDef?.name || fromKey}</span><span style="font-size:12px;color:#999;">→</span><span class="panel-loc-info" style="background:#e8f5e9;color:#2e7d32;">${retDef?.name || retKey}</span></div>
+                <p style="font-size:12px;color:#c62828;margin:6px 0 0;line-height:1.5;">${t('return_warn')}</p>
+                ${qtyRow}
+                <button class="panel-submit" type="button" style="background:#e65100;color:#fff;" onclick="submitCardAction(${item.id},'return')">${t('panel_ok_return')}</button>`;
+        }
+
+        if (type === "waste") {
+            const fromKey = item.defaultConsumeLocation || "prep";
+            const fromDef = LOCATION_DEFS[fromKey];
+            return `
+                <div class="panel-row"><span class="panel-label">${t('panel_waste_lbl')}</span><span class="panel-loc-info" style="background:#efebe9;color:#5d4037;">${fromDef?.name || fromKey}</span></div>
+                <div class="panel-row">
+                    <span class="panel-label">${t('panel_qty')}</span>
+                    <input class="panel-input panel-qty-input" id="card-qty-${item.id}" type="text" inputmode="decimal" placeholder="0">
+                    <div class="unit-chips">${unitChips}</div>
+                </div>
+                <input type="hidden" id="card-wkey-${item.id}">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;" id="card-wchips-${item.id}">
+                    ${WASTE_REASONS.map(r => `<button type="button" class="wchip" onclick="selectCardWasteReason(${item.id},'${r.key}',this)">${escapeHtml(t(r.tKey))}</button>`).join('')}
+                </div>
+                <input class="panel-note" type="text" id="card-note-${item.id}" placeholder="${t('waste_other_ph')}" style="display:none;">
+                <button class="panel-submit" type="button" style="background:#5d4037;color:#fff;" onclick="submitCardAction(${item.id},'waste')">${t('panel_ok_waste')}</button>`;
+        }
+        return "";
+    }
+
+    window.selectCardWasteReason = function(itemId, key, btn) {
+        document.querySelectorAll(`#card-wchips-${itemId} .wchip`).forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const k = document.getElementById(`card-wkey-${itemId}`);
+        if (k) k.value = key;
+        const note = document.getElementById(`card-note-${itemId}`);
+        if (note) {
+            note.style.display = key === 'other' ? '' : 'none';
+            if (key === 'other') note.focus();
+        }
+    };
+
+    window.submitCardAction = function(itemId, type) {
+        if (!guardOnline()) return;
+        const item = inventoryData.find(i => String(i.id) === String(itemId));
+        if (!item) return;
+        const qtyVal  = document.getElementById(`card-qty-${itemId}`)?.value;
+        const noteVal = document.getElementById(`card-note-${itemId}`)?.value.trim() || "";
+        const unit    = document.querySelector(`input[name="card-unit-${itemId}"]:checked`)?.value || item.displayUnit;
+
+        runStockTransaction((items, txLogs) => {
+            const it = items.find(i => String(i.id) === String(itemId));
+            if (!it) { alert(t('item_not_found')); return false; }
+            const baseQty = roundQty(qtyToBase(it, qtyVal, unit));
+            if (!Number.isFinite(baseQty) || baseQty <= 0) { alert(t('enter_qty')); return false; }
+            const qtyText  = formatQty(it, baseQty);
+            const noteText = noteVal ? `｜${noteVal}` : "";
+            const recLoc   = it.defaultReceiveLocation;
+            const retLoc   = it.defaultReturnLocation || recLoc;
+            const station  = it.primaryStation || "pizzaStation";
+            if (type === "receive") {
+                it.locations[recLoc] = roundQty(normalizeNumber(it.locations[recLoc], 0) + baseQty);
+                pushLog(txLogs, `📦 進貨入庫：【${it.name}】${LOCATION_DEFS[recLoc]?.name || recLoc} +${qtyText}${noteText}`, { itemId: it.id, actionType: type, baseQty, toLocation: recLoc });
+            } else if (type === "prep") {
+                const fromLoc = recLoc;
+                const toLoc   = it.defaultIssueLocation || "onsiteChilled";
+                if (normalizeNumber(it.locations[fromLoc], 0) < baseQty) { alert(t('stock_short').replace('{loc}', LOCATION_DEFS[fromLoc]?.name || fromLoc)); return false; }
+                it.locations[fromLoc] = roundQty(it.locations[fromLoc] - baseQty);
+                it.locations[toLoc]   = roundQty(normalizeNumber(it.locations[toLoc], 0) + baseQty);
+                pushLog(txLogs, `🍕 備料：【${it.name}】${LOCATION_DEFS[fromLoc]?.name || fromLoc} → ${LOCATION_DEFS[toLoc]?.name || toLoc}，${qtyText}${noteText}`, { itemId: it.id, actionType: type, baseQty, fromLocation: fromLoc, toLocation: toLoc });
+            } else if (type === "consume") {
+                const fromLoc = it.defaultConsumeLocation || "prep";
+                if (normalizeNumber(it.locations[fromLoc], 0) < baseQty) { alert(t('stock_short').replace('{loc}', LOCATION_DEFS[fromLoc]?.name || fromLoc)); return false; }
+                it.locations[fromLoc] = roundQty(it.locations[fromLoc] - baseQty);
+                it.locations[station] = roundQty(normalizeNumber(it.locations[station], 0) + baseQty);
+                pushLog(txLogs, `📤 消耗：【${it.name}】${LOCATION_DEFS[fromLoc]?.name || fromLoc} -${qtyText}${noteText}`, { itemId: it.id, actionType: type, baseQty, fromLocation: fromLoc, toLocation: station });
+            } else if (type === "return") {
+                const fromLoc = it.defaultConsumeLocation || "prep";
+                if (normalizeNumber(it.locations[fromLoc], 0) < baseQty) { alert(t('stock_short').replace('{loc}', LOCATION_DEFS[fromLoc]?.name || fromLoc)); return false; }
+                it.locations[fromLoc] = roundQty(it.locations[fromLoc] - baseQty);
+                it.locations[retLoc]  = roundQty(normalizeNumber(it.locations[retLoc], 0) + baseQty);
+                pushLog(txLogs, `↩️ 回放：【${it.name}】${LOCATION_DEFS[fromLoc]?.name || fromLoc} → ${LOCATION_DEFS[retLoc]?.name || retLoc}，${qtyText}${noteText}`, { itemId: it.id, actionType: type, baseQty, fromLocation: fromLoc, toLocation: retLoc });
+            } else if (type === "waste") {
+                const wkey = document.getElementById(`card-wkey-${itemId}`)?.value || '';
+                const reason = wkey === 'other' ? noteVal : (WASTE_REASONS.find(r => r.key === wkey)?.zh || '');
+                if (!reason) { alert(t('waste_reason_need')); return false; }
+                const fromLoc = it.defaultConsumeLocation || "prep";
+                if (normalizeNumber(it.locations[fromLoc], 0) < baseQty) { alert(t('stock_short').replace('{loc}', LOCATION_DEFS[fromLoc]?.name || fromLoc)); return false; }
+                it.locations[fromLoc] = roundQty(it.locations[fromLoc] - baseQty);
+                pushLog(txLogs, `🗑 報廢：【${it.name}】${LOCATION_DEFS[fromLoc]?.name || fromLoc} -${qtyText}（${reason}）`, { itemId: it.id, actionType: type, baseQty, fromLocation: fromLoc, reason });
+            }
+        }).then(ok => {
+            if (!ok) return;
+            cardPanelState[itemId] = null;
+            ["receive", "prep", "consume", "return", "waste"].forEach(t => document.getElementById(`actbtn-${t}-${itemId}`)?.classList.remove("active"));
+            const panel = document.getElementById(`card-panel-${itemId}`);
+            if (panel) { panel.classList.add("hidden"); panel.innerHTML = ""; }
+        });
+    };
+
+    function renderLogs() {
+        const container = document.getElementById("logContainer");
+        if (!globalLogs.length) {
+            container.innerHTML = `<div style="text-align:center;color:#9aa6a0;">${t('no_log')}</div>`;
+            return;
+        }
+        container.innerHTML = globalLogs.map(l => `<div class="log-line"><span class="log-time">${escapeHtml(l.time || "")}</span><span>${escapeHtml(l.text || "")}</span></div>`).join("");
+    }
+
+    window.filterCategory = function(cat) {
+        currentCategoryFilter = cat;
+        renderInventory();
+        renderFilters();
+    };
+
+
+    window.clearLogs = async function() {
+        if (!guardOnline()) return;
+        if (!confirm(t('confirm_clear'))) return;
+        const snap = await getDocs(logsRef);
+        if (!snap.size) { showToast(t('toast_no_logs')); return; }
+        const BATCH_SIZE = 500;
+        let batch = writeBatch(db);
+        let count = 0;
+        for (const d of snap.docs) {
+            batch.delete(d.ref);
+            if (++count % BATCH_SIZE === 0) { await batch.commit(); batch = writeBatch(db); }
+        }
+        if (count % BATCH_SIZE !== 0) await batch.commit();
+        showToast(t('toast_cleared'));
+    };
+
+    // ── 簽收入庫（叫貨單） ──────────────────────────────────────
+    onSnapshot(query(ordersRef, orderBy('createdAt', 'desc')), snap => {
+        receiveOrdersData = snap.docs
+            .map(d => ({ docId: d.id, ...d.data() }))
+            .filter(o => o.status === 'ordered' || o.status === 'partial' || o.status === 'processing');
+        updateReceiveTabLabel();
+        renderReceiveOrders();
+    }, err => console.error('orders snapshot error', err));
+
+    function updateReceiveTabLabel() {
+        const el = document.getElementById('tabReceive');
+        if (!el) return;
+        const n = receiveOrdersData.length;
+        el.textContent = t('tab_receive') + (n ? ` (${n})` : '');
+    }
+
+    function fmtOrderTime(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        if (isNaN(d)) return '—';
+        return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    // 追蹤單位：v2 訂單（factorBase）以基準單位追蹤；舊版 procFactor 以顯示單位；否則叫貨單位
+    function orderTrack(o) {
+        if (!o.requiresProcessing && normalizeNumber(o.factorBase, 0) > 0) {
+            return {
+                mode: 'base',
+                factor: normalizeNumber(o.factorBase, 0),
+                unit: o.baseUnit || '',
+                total: roundQty(o.orderQty * normalizeNumber(o.factorBase, 0)),
+            };
+        }
+        const factor = (!o.requiresProcessing && normalizeNumber(o.procFactor, 0) > 0) ? normalizeNumber(o.procFactor, 0) : 0;
+        return {
+            mode: factor ? 'stock' : 'order',
+            factor,
+            unit: factor ? (o.stockUnit || '') : (o.orderUnit || ''),
+            total: factor ? roundQty(o.orderQty * factor) : normalizeNumber(o.orderQty, 0),
+        };
+    }
+
+    function renderReceiveOrders() {
+        const wrap = document.getElementById('receiveOrders');
+        if (!wrap) return;
+        if (!receiveOrdersData.length) {
+            wrap.innerHTML = `<div style="text-align:center;color:#8a9690;padding:40px 10px;font-size:15px;">${escapeHtml(t('rcv_none'))}</div>`;
+            return;
+        }
+        wrap.innerHTML = receiveOrdersData.map(o => {
+            const item = inventoryData.find(i => String(i.id) === String(o.itemId));
+            const name = item ? itemDisplayName(item) : o.itemName;
+            const dispUnit = item?.displayUnit || '';
+            const recLoc = item?.defaultReceiveLocation || 'warehouseFrozen';
+            const recLocName = LOCATION_DEFS[recLoc]?.name || recLoc;
+            const isProc = o.status === 'processing';
+            const isPartial = o.status === 'partial';
+            const tk = orderTrack(o);
+            const received = normalizeNumber(o.receiveQty, 0);
+            const remaining = roundQty(tk.total - received);
+            const statusBadge = isProc
+                ? `<span style="background:#fff3e0;color:#e65100;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:bold;">${escapeHtml(t('rcv_status_proc'))}</span>`
+                : isPartial
+                ? `<span style="background:#fff8e1;color:#8d6e00;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:bold;">${escapeHtml(t('rcv_status_partial'))}</span>`
+                : `<span style="background:#e3f2fd;color:#1565c0;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:bold;">${escapeHtml(t('rcv_status_wait'))}</span>`;
+            const procBadge = o.requiresProcessing && !isProc
+                ? ` <span style="background:#fce4ec;color:#ad1457;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:bold;">${escapeHtml(t('rcv_need_proc'))}</span>` : '';
+            const orderLine = `${escapeHtml(t('rcv_order_qty'))} <strong style="font-size:16px;color:#1b5e20;">${o.orderQty} ${escapeHtml(o.orderUnit || '')}</strong>`
+                + (tk.factor ? `<span style="color:#556;">（= ${tk.total} ${escapeHtml(tk.unit)}）</span>` : '')
+                + (received > 0 ? `｜${escapeHtml(t('rcv_received'))} ${received} ${escapeHtml(tk.unit)}${isPartial ? `，<strong style="color:#ad6800;">${escapeHtml(t('rcv_remaining'))} ${remaining} ${escapeHtml(tk.unit)}</strong>` : ''}` : '');
+            const meta = `${escapeHtml(t('rcv_ordered_at'))}${fmtOrderTime(o.orderedAt || o.createdAt)}`
+                + (o.notes ? `｜${escapeHtml(t('rcv_notes'))}${escapeHtml(o.notes)}` : '');
+            const diffInfo = (o.diffLog || []).length
+                ? `<div style="font-size:12px;color:#ad6800;margin-top:3px;">${o.diffLog.map(escapeHtml).join('<br>')}</div>` : '';
+            const inputStyle = 'width:110px;padding:10px 12px;border:1.5px solid #c8d5cf;border-radius:8px;font-size:16px;';
+            const lblStyle = 'display:block;font-size:12px;color:#667;margin-bottom:4px;';
+            const reasonBlock = `
+                <div id="rcv-reason-wrap-${o.docId}" style="display:none;width:100%;margin-top:6px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px;">
+                    <label style="${lblStyle}color:#8d6e00;">${escapeHtml(t('rcv_reason_lbl'))}</label>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <select id="rcv-reason-${o.docId}" style="padding:10px 12px;border:1.5px solid #c8d5cf;border-radius:8px;font-size:15px;">
+                            <option value="">${escapeHtml(t('rcv_reason_sel'))}</option>
+                            <option value="${escapeHtml(T.zh.r_miss)}">${escapeHtml(t('r_miss'))}</option>
+                            <option value="${escapeHtml(T.zh.r_later)}">${escapeHtml(t('r_later'))}</option>
+                            <option value="${escapeHtml(T.zh.r_over)}">${escapeHtml(t('r_over'))}</option>
+                            <option value="${escapeHtml(T.zh.r_scale)}">${escapeHtml(t('r_scale'))}</option>
+                            <option value="${escapeHtml(T.zh.r_other)}">${escapeHtml(t('r_other'))}</option>
+                        </select>
+                        <input id="rcv-reason-txt-${o.docId}" type="text" placeholder="${escapeHtml(t('rcv_reason_ph'))}" style="flex:1;min-width:140px;padding:10px 12px;border:1.5px solid #c8d5cf;border-radius:8px;font-size:15px;">
+                    </div>
+                </div>`;
+
+            let controls;
+            if (!isProc && remaining <= 0.001) {
+                controls = `<div style="font-size:13px;color:#8a9690;">✅ ${escapeHtml(t('rcv_full_signed'))}</div>`;
+            } else if (isProc) {
+                controls = `
+                    <div>
+                        <label style="${lblStyle}">${escapeHtml(t('rcv_processed_qty'))}（${escapeHtml(dispUnit)}）</label>
+                        <input id="rcv-proc-${o.docId}" type="text" inputmode="decimal" style="${inputStyle}">
+                    </div>
+                    <button class="btn btn-primary" type="button" id="rcv-btn-${o.docId}" data-write="true" onclick="receiveProcessDone('${o.docId}')">${t('rcv_btn_done')}</button>`;
+            } else if (o.requiresProcessing) {
+                controls = `
+                    <div>
+                        <label style="${lblStyle}">${escapeHtml(t('rcv_recv_qty'))}（${escapeHtml(o.orderUnit || '')}）</label>
+                        <input id="rcv-recv-${o.docId}" type="text" inputmode="decimal" value="${remaining}" data-remaining="${remaining}" oninput="onReceiveQtyInput('${o.docId}')" style="${inputStyle}">
+                    </div>
+                    <button class="btn btn-primary" type="button" id="rcv-btn-${o.docId}" data-write="true" onclick="receiveSignOnly('${o.docId}')">${t('rcv_btn_sign')}</button>
+                    ${reasonBlock}`;
+            } else if (tk.mode === 'base') {
+                // 基準單位追蹤：可切換 叫貨/顯示/基準 單位點收，自動換算
+                const opts = [];
+                const seen = new Set();
+                const pushOpt = (u, f) => { if (u && f > 0 && !seen.has(u)) { seen.add(u); opts.push({ u, f }); } };
+                pushOpt(o.orderUnit, tk.factor);
+                if (item && item.displayUnit !== item.baseUnit) pushOpt(item.displayUnit, item.basePerDisplay || 1);
+                pushOpt(o.baseUnit || item?.baseUnit, 1);
+                const unitChips = opts.length > 1 ? `
+                    <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">${opts.map((op, i) => `
+                        <label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;border:1.5px solid #c8d5cf;border-radius:14px;padding:4px 12px;background:#fff;">
+                            <input type="radio" name="rcv-unit-${o.docId}" value="${escapeHtml(op.u)}" data-f="${op.f}" ${i === 0 ? 'checked' : ''} onchange="onReceiveUnitChange('${o.docId}')">${escapeHtml(op.u)}
+                        </label>`).join('')}
+                    </div>` : '';
+                const defF = opts[0]?.f || 1;
+                controls = `
+                    <div>
+                        <label style="${lblStyle}">${escapeHtml(t('rcv_recv_qty'))}</label>
+                        ${unitChips}
+                        <input id="rcv-recv-${o.docId}" type="text" inputmode="decimal" value="${roundQty(remaining / defF)}" data-remaining="${remaining}" oninput="onReceiveQtyInput('${o.docId}')" style="${inputStyle}">
+                    </div>
+                    <button class="btn btn-primary" type="button" id="rcv-btn-${o.docId}" data-write="true" onclick="receiveSignIn('${o.docId}')">${t('rcv_btn_sign_in')}</button>
+                    ${reasonBlock}`;
+            } else {
+                // 舊模式：無換算且單位相同 → 一格；否則兩格
+                const needStockInput = !tk.factor && (o.orderUnit || '') !== dispUnit;
+                const stockInInput = needStockInput ? `
+                    <div>
+                        <label style="${lblStyle}">${escapeHtml(t('rcv_stockin_qty'))}（${escapeHtml(dispUnit)}）</label>
+                        <input id="rcv-stockin-${o.docId}" type="text" inputmode="decimal" style="${inputStyle}">
+                    </div>` : '';
+                controls = `
+                    <div>
+                        <label style="${lblStyle}">${escapeHtml(t('rcv_recv_qty'))}（${escapeHtml(tk.unit)}）</label>
+                        <input id="rcv-recv-${o.docId}" type="text" inputmode="decimal" value="${remaining}" data-remaining="${remaining}" oninput="onReceiveQtyInput('${o.docId}')" style="${inputStyle}">
+                    </div>
+                    ${stockInInput}
+                    <button class="btn btn-primary" type="button" id="rcv-btn-${o.docId}" data-write="true" onclick="receiveSignIn('${o.docId}')">${t('rcv_btn_sign_in')}</button>
+                    ${reasonBlock}`;
+            }
+
+            return `
+            <div style="background:#fff;border:1.5px solid #dce6e0;border-radius:12px;padding:14px 16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                    <strong style="font-size:16px;">${escapeHtml(name)}</strong>
+                    <span>${statusBadge}${procBadge}</span>
+                </div>
+                <div style="font-size:14px;color:#33413a;margin-top:6px;">${orderLine}</div>
+                <div style="font-size:13px;color:#667;margin-top:4px;">${meta}</div>
+                <div style="font-size:12px;color:#8a9690;margin-top:2px;">${escapeHtml(t('rcv_stockin_hint'))}：${escapeHtml(recLocName)}</div>
+                ${diffInfo}
+                <div style="display:flex;gap:10px;align-items:flex-end;margin-top:12px;flex-wrap:wrap;">${controls}</div>
+            </div>`;
+        }).join('');
+    }
+
+    // 目前選取單位對基準（或追蹤單位）的換算倍率；無切換鈕時為 1
+    function rcvUnitFactor(docId) {
+        const sel = document.querySelector(`input[name="rcv-unit-${docId}"]:checked`);
+        return sel ? normalizeNumber(sel.dataset.f, 1) || 1 : 1;
+    }
+
+    window.onReceiveQtyInput = function(docId) {
+        const inp = document.getElementById(`rcv-recv-${docId}`);
+        if (!inp) return;
+        const v = normalizeNumber(inp.value, 0);
+        const f = rcvUnitFactor(docId);
+        const remaining = normalizeNumber(inp.dataset.remaining, 0);
+        const wrap = document.getElementById(`rcv-reason-wrap-${docId}`);
+        if (wrap) wrap.style.display = (v > 0 && Math.abs(roundQty(v * f) - remaining) > 0.001) ? 'block' : 'none';
+    };
+
+    window.onReceiveUnitChange = function(docId) {
+        const inp = document.getElementById(`rcv-recv-${docId}`);
+        if (!inp) return;
+        const f = rcvUnitFactor(docId);
+        const remaining = normalizeNumber(inp.dataset.remaining, 0);
+        inp.value = roundQty(remaining / f);
+        onReceiveQtyInput(docId);
+    };
+
+    function getDiffEntry(o, signQty) {
+        const tk = orderTrack(o);
+        const received = normalizeNumber(o.receiveQty, 0);
+        const remaining = roundQty(tk.total - received);
+        const diff = roundQty(signQty - remaining);
+        if (Math.abs(diff) < 0.001) return { ok: true, entry: null };
+        const sel = document.getElementById(`rcv-reason-${o.docId}`)?.value || '';
+        const txt = (document.getElementById(`rcv-reason-txt-${o.docId}`)?.value || '').trim();
+        const reason = [sel, txt].filter(Boolean).join('，');
+        if (!reason) {
+            const wrap = document.getElementById(`rcv-reason-wrap-${o.docId}`);
+            if (wrap) wrap.style.display = 'block';
+            showToast(t('rcv_reason_need'));
+            return { ok: false };
+        }
+        const d = new Date();
+        return { ok: true, entry: `${d.getMonth() + 1}/${d.getDate()} 簽收 ${signQty} ${tk.unit}（${diff > 0 ? '+' : ''}${diff}）：${reason}` };
+    }
+
+    // 點擊即鎖定按鈕，寫入完成前防止重複送出
+    function lockReceiveBtn(docId) {
+        const btn = document.getElementById(`rcv-btn-${docId}`);
+        if (!btn || btn.disabled) return null;
+        btn.disabled = true;
+        btn.style.opacity = '0.55';
+        btn.dataset.origText = btn.textContent;
+        btn.textContent = t('rcv_saving');
+        return btn;
+    }
+    function unlockReceiveBtn(btn) {
+        if (!btn) return;
+        btn.disabled = false;
+        btn.style.opacity = '';
+        if (btn.dataset.origText) btn.textContent = btn.dataset.origText;
+    }
+
+    // 完成規則：總簽收＝叫貨量→完成；少→部分到貨；多→溢收（待管理者結案）
+    function nextReceiveStatus(newReceived, total) {
+        if (newReceived > total + 0.001) return 'over';
+        if (newReceived >= total - 0.001) return 'done';
+        return 'partial';
+    }
+
+    // 以資料庫最新狀態原子更新訂單，避免連續操作用到畫面舊資料
+    async function updateOrderTx(docId, mutate) {
+        try {
+            await runTransaction(db, async tx => {
+                const ref = doc(ordersRef, docId);
+                const snap = await tx.get(ref);
+                if (!snap.exists()) return;
+                const patch = mutate({ docId, ...snap.data() });
+                if (patch) tx.update(ref, patch);
+            });
+            return true;
+        } catch (e) {
+            alert(t('tx_error') + e.message);
+            return false;
+        }
+    }
+
+    async function stockInFromOrder(order, stockQty, isBaseQty = false) {
+        const ok = await runStockTransaction((items, txLogs) => {
+            const it = items.find(i => String(i.id) === String(order.itemId));
+            if (!it) { alert(t('item_not_found')); return false; }
+            const recLoc = it.defaultReceiveLocation || 'warehouseFrozen';
+            const baseQty = roundQty(isBaseQty ? stockQty : stockQty * (it.basePerDisplay || 1));
+            const qtyText = isBaseQty ? `${stockQty} ${it.baseUnit}` : `${stockQty} ${it.displayUnit}`;
+            if (!it.locations) it.locations = {};
+            it.locations[recLoc] = roundQty((it.locations[recLoc] || 0) + baseQty);
+            pushLog(txLogs, `📦 進貨入庫：【${it.name}】${LOCATION_DEFS[recLoc]?.name || recLoc} +${qtyText}（叫貨簽收）`,
+                { itemId: it.id, actionType: 'receive', baseQty, toLocation: recLoc, orderId: order.docId });
+        }, { silent: true });
+        return ok;
+    }
+
+    window.receiveSignIn = async function(docId) {
+        const o = receiveOrdersData.find(x => x.docId === docId);
+        if (!o) return;
+        const tk = orderTrack(o);
+        const isBaseMode = tk.mode === 'base';
+        const inputVal = normalizeNumber(document.getElementById(`rcv-recv-${docId}`)?.value, 0);
+        // 基準模式：輸入值 × 選取單位倍率 = 簽收基準量（＝入庫量）
+        const recvQty = isBaseMode ? roundQty(inputVal * rcvUnitFactor(docId)) : inputVal;
+        const stockInput = document.getElementById(`rcv-stockin-${docId}`);
+        const stockQty = isBaseMode ? recvQty : (stockInput ? normalizeNumber(stockInput.value, 0) : recvQty);
+        if (recvQty <= 0 || stockQty <= 0) { showToast(t('enter_qty')); return; }
+        const dr = getDiffEntry(o, recvQty);
+        if (!dr.ok) return;
+        const btn = lockReceiveBtn(docId);
+        if (!btn) return;
+        let success = false;
+        try {
+            if (!(await stockInFromOrder(o, stockQty, isBaseMode))) return;
+            const now = new Date().toISOString();
+            let newStatus = 'partial';
+            const ok = await updateOrderTx(docId, fresh => {
+                const newReceived = roundQty(normalizeNumber(fresh.receiveQty, 0) + recvQty);
+                newStatus = nextReceiveStatus(newReceived, orderTrack(fresh).total);
+                return {
+                    status: newStatus,
+                    receiveQty: newReceived,
+                    processedQty: roundQty(normalizeNumber(fresh.processedQty, 0) + stockQty),
+                    receivedAt: now,
+                    ...(newStatus === 'done' ? { doneAt: now } : {}),
+                    ...(dr.entry ? { diffLog: [...(fresh.diffLog || []), dr.entry] } : {})
+                };
+            });
+            success = ok;
+            if (ok) showToast(newStatus === 'done' ? t('rcv_done_toast') : newStatus === 'over' ? t('rcv_over_toast') : t('rcv_partial_toast'));
+        } finally {
+            if (!success) unlockReceiveBtn(btn);
+        }
+    };
+
+    window.receiveSignOnly = async function(docId) {
+        const o = receiveOrdersData.find(x => x.docId === docId);
+        if (!o) return;
+        const recvQty = normalizeNumber(document.getElementById(`rcv-recv-${docId}`)?.value, 0);
+        if (recvQty <= 0) { showToast(t('enter_qty')); return; }
+        const dr = getDiffEntry(o, recvQty);
+        if (!dr.ok) return;
+        if (!guardOnline()) return;
+        const btn = lockReceiveBtn(docId);
+        if (!btn) return;
+        let success = false;
+        try {
+            const ok = await updateOrderTx(docId, fresh => ({
+                status: 'processing',
+                receiveQty: roundQty(normalizeNumber(fresh.receiveQty, 0) + recvQty),
+                receivedAt: new Date().toISOString(),
+                ...(dr.entry ? { diffLog: [...(fresh.diffLog || []), dr.entry] } : {})
+            }));
+            success = ok;
+            if (ok) showToast(t('rcv_signed_toast'));
+        } finally {
+            if (!success) unlockReceiveBtn(btn);
+        }
+    };
+
+    window.receiveProcessDone = async function(docId) {
+        const o = receiveOrdersData.find(x => x.docId === docId);
+        if (!o) return;
+        const stockQty = normalizeNumber(document.getElementById(`rcv-proc-${docId}`)?.value, 0);
+        if (stockQty <= 0) { showToast(t('enter_qty')); return; }
+        const btn = lockReceiveBtn(docId);
+        if (!btn) return;
+        let success = false;
+        try {
+            if (!(await stockInFromOrder(o, stockQty))) return;
+            const now = new Date().toISOString();
+            let newStatus = 'partial';
+            const ok = await updateOrderTx(docId, fresh => {
+                newStatus = nextReceiveStatus(normalizeNumber(fresh.receiveQty, 0), orderTrack(fresh).total);
+                return {
+                    status: newStatus,
+                    processedQty: roundQty(normalizeNumber(fresh.processedQty, 0) + stockQty),
+                    ...(newStatus === 'done' ? { doneAt: now } : {})
+                };
+            });
+            success = ok;
+            if (ok) showToast(newStatus === 'done' ? t('rcv_done_toast') : newStatus === 'over' ? t('rcv_over_toast') : t('rcv_partial_toast'));
+        } finally {
+            if (!success) unlockReceiveBtn(btn);
+        }
+    };
+
+    // ── 銷售回報 ────────────────────────────────────────────────
+    let salesAll = [];
+    let salesEditingId = null;
+
+    onSnapshot(query(salesRef, orderBy('ts', 'desc'), fsLimit(80)), snap => {
+        salesAll = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+        renderSalesView();
+    }, err => console.error('sales snapshot error', err));
+
+    function salesTodayStr() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function renderSalesView() {
+        const wrap = document.getElementById('salesFormWrap');
+        const listEl = document.getElementById('salesTodayList');
+        if (!wrap || !listEl) return;
+        const items = Array.isArray(settings.salesItems) ? settings.salesItems : [];
+        if (!items.length) {
+            wrap.innerHTML = `<div style="color:#8a9690;font-size:14px;">${escapeHtml(t('sales_no_items'))}</div>`;
+            listEl.innerHTML = '';
+            return;
+        }
+        const editing = salesEditingId ? salesAll.find(s => s.docId === salesEditingId) : null;
+        if (salesEditingId && !editing) salesEditingId = null;
+        wrap.innerHTML = `
+            <div style="font-size:13px;color:#8a9690;margin-bottom:12px;">${escapeHtml(t('sales_date'))}：${salesTodayStr()}${editing ? `｜<strong style="color:#e65100;">${escapeHtml(t('sales_editing'))} ${escapeHtml(editing.time || '')}</strong>` : ''}</div>
+            ${items.map(it => `
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <span style="flex:1;font-size:15px;">${escapeHtml(it.name)}</span>
+                    <input id="sale-qty-${it.id}" type="text" inputmode="numeric" value="${editing ? normalizeNumber(editing.counts?.[it.id], 0) : ''}" placeholder="0"
+                        style="width:100px;padding:10px 12px;border:1.5px solid #c8d5cf;border-radius:8px;font-size:16px;text-align:right;">
+                </div>`).join('')}
+            <div style="display:flex;gap:10px;margin-top:14px;">
+                ${editing ? `<button class="btn btn-ghost" type="button" onclick="cancelSalesEdit()">${t('sales_cancel_edit')}</button>` : ''}
+                <button class="btn btn-primary" type="button" id="salesSubmitBtn" style="flex:1;" onclick="submitSales()">${editing ? t('sales_update') : t('sales_submit')}</button>
+            </div>`;
+
+        const today = salesTodayStr();
+        const list = salesAll.filter(s => s.date === today);
+        listEl.innerHTML = list.length ? list.map(s => `
+            <div style="background:#fff;border:1px solid #e2e9e4;border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;${s.docId === salesEditingId ? 'border-color:#e65100;' : ''}">
+                <div style="font-size:13px;color:#43534b;line-height:1.8;">
+                    <span style="color:#8a9690;">${escapeHtml((s.time || '').split(' ')[1] || s.time || '')}</span><br>
+                    ${items.map(it => `${escapeHtml(it.name)} <strong>${normalizeNumber(s.counts?.[it.id], 0)}</strong>`).join('｜')}
+                </div>
+                <div style="display:flex;gap:6px;">
+                    <button class="btn btn-ghost btn-small" type="button" onclick="editSalesEntry('${s.docId}')">${t('sales_edit')}</button>
+                    <button class="btn btn-ghost btn-small" type="button" style="color:#c62828;" onclick="deleteSalesEntry('${s.docId}')">${t('sales_delete')}</button>
+                </div>
+            </div>`).join('') : `<div style="color:#9aa6a0;font-size:13px;">${escapeHtml(t('sales_none'))}</div>`;
+    }
+
+    window.submitSales = async function() {
+        if (!guardOnline()) return;
+        const items = Array.isArray(settings.salesItems) ? settings.salesItems : [];
+        if (!items.length) return;
+        const counts = {};
+        let total = 0;
+        items.forEach(it => {
+            const v = normalizeNumber(document.getElementById(`sale-qty-${it.id}`)?.value, 0);
+            counts[it.id] = v;
+            total += v;
+        });
+        if (total <= 0) { showToast(t('enter_qty')); return; }
+        const btn = document.getElementById('salesSubmitBtn');
+        if (btn?.disabled) return;
+        if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+        try {
+            const now = new Date();
+            if (salesEditingId) {
+                await updateDoc(doc(salesRef, salesEditingId), { counts, updatedAt: now.getTime() });
+                salesEditingId = null;
+                showToast(t('sales_updated'));
+            } else {
+                await addDoc(salesRef, {
+                    date: salesTodayStr(),
+                    counts,
+                    itemNames: Object.fromEntries(items.map(it => [it.id, it.name])),
+                    ts: now.getTime(),
+                    time: now.toLocaleString('zh-TW', { hour12: false }),
+                    source: 'app',
+                });
+                showToast(t('sales_saved'));
+            }
+            renderSalesView();
+        } catch (e) {
+            alert(t('tx_error') + e.message);
+            if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+        }
+    };
+
+    window.editSalesEntry = function(docId) {
+        salesEditingId = docId;
+        renderSalesView();
+    };
+
+    window.cancelSalesEdit = function() {
+        salesEditingId = null;
+        renderSalesView();
+    };
+
+    window.deleteSalesEntry = async function(docId) {
+        if (!guardOnline()) return;
+        if (!confirm(t('sales_del_confirm'))) return;
+        try {
+            await deleteDoc(doc(salesRef, docId));
+            if (salesEditingId === docId) salesEditingId = null;
+            showToast(t('sales_deleted'));
+        } catch (e) { alert(t('tx_error') + e.message); }
+    };
+
+    // ── Tab switching ──────────────────────────────────────────
+    function showView(tabId, viewId) {
+        ['tabStock', 'tabReceive', 'tabSales', 'tabCount'].forEach(id =>
+            document.getElementById(id)?.classList.toggle('active', id === tabId));
+        ['stockView', 'receiveView', 'salesView', 'countView'].forEach(id =>
+            document.getElementById(id)?.classList.toggle('hidden', id !== viewId));
+    }
+
+    window.openStockTab = function() {
+        showView('tabStock', 'stockView');
+    };
+
+    window.openReceiveTab = function() {
+        showView('tabReceive', 'receiveView');
+        renderReceiveOrders();
+    };
+
+    window.openSalesTab = function() {
+        showView('tabSales', 'salesView');
+        renderSalesView();
+    };
+
+    let countUnlocked = false;
+    let fullCountMode = false;
+    let fullCountConfirmed = new Set();
+
+    window.openCountTab = function() {
+        showView('tabCount', 'countView');
+        if (countUnlocked) {
+            renderCountItems();
+        } else {
+            document.getElementById("countPinOverlay")?.classList.remove("hidden");
+            document.getElementById("countContent")?.classList.add("hidden");
+            setTimeout(() => document.getElementById("countPinInput")?.focus(), 80);
+        }
+    };
+
+    window.verifyCountPin = function() {
+        const input = document.getElementById("countPinInput")?.value || "";
+        const pin = settings.countPin || settings.adminPin || "1234";
+        if (input === pin) {
+            countUnlocked = true;
+            document.getElementById("countPinOverlay").classList.add("hidden");
+            document.getElementById("countContent").classList.remove("hidden");
+            document.getElementById("countPinError").style.display = "none";
+            document.getElementById("countPinInput").value = "";
+            renderCountItems();
+        } else {
+            document.getElementById("countPinError").style.display = "block";
+            document.getElementById("countPinInput").value = "";
+            document.getElementById("countPinInput").focus();
+        }
+    };
+
+    window.lockCount = function() {
+        fullCountMode = false;
+        fullCountConfirmed = new Set();
+        countUnlocked = false;
+        document.getElementById("countPinOverlay").classList.remove("hidden");
+        document.getElementById("countContent").classList.add("hidden");
+        document.getElementById("countPinInput").value = "";
+    };
+
+    function updateLastFullCountInfo() {
+        const el = document.getElementById('lastFullCountInfo');
+        if (!el) return;
+        if (settings.lastFullCountAt) {
+            const d = new Date(settings.lastFullCountAt);
+            const locale = currentLang === 'vi' ? 'vi-VN' : 'zh-TW';
+            el.textContent = `${t('last_count')}${d.toLocaleDateString(locale)} ${d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+        } else {
+            el.textContent = t('no_last_count');
+        }
+    }
+
+    function updateFullCountProgress() {
+        const total = inventoryData.filter(i => i.active !== false).length;
+        const el = document.getElementById('fullCountProgress');
+        if (el) el.textContent = t('full_progress').replace('{done}', fullCountConfirmed.size).replace('{total}', total);
+    }
+
+    window.startFullCount = function() {
+        fullCountMode = true;
+        fullCountConfirmed = new Set();
+        document.getElementById('fullCountBar').style.display = 'flex';
+        document.getElementById('startFullCountBtn').style.display = 'none';
+        renderCountItems();
+        updateFullCountProgress();
+    };
+
+    window.cancelFullCount = function() {
+        fullCountMode = false;
+        fullCountConfirmed = new Set();
+        document.getElementById('fullCountBar').style.display = 'none';
+        document.getElementById('startFullCountBtn').style.display = '';
+        renderCountItems();
+    };
+
+    window.finishFullCount = async function() {
+        if (!guardOnline()) return;
+        const total = inventoryData.filter(i => i.active !== false).length;
+        if (fullCountConfirmed.size < total) {
+            alert(t('full_incomplete').replace('{n}', total - fullCountConfirmed.size));
+            return;
+        }
+        try {
+            await setDoc(docRef, { settings: { ...settings, lastFullCountAt: Date.now() } }, { merge: true });
+        } catch (e) {
+            console.warn('儲存盤點完成時間失敗', e);
+        }
+        showToast(t('full_done'));
+        fullCountMode = false;
+        fullCountConfirmed = new Set();
+        document.getElementById('fullCountBar').style.display = 'none';
+        document.getElementById('startFullCountBtn').style.display = '';
+        renderCountItems();
+        updateLastFullCountInfo();
+    };
+
+    function countLocKeys(item) {
+        const primary = item.defaultReceiveLocation || 'warehouseFrozen';
+        const warehouseWithStock = WAREHOUSE_KEYS.filter(k => k !== primary && (item.locations?.[k] || 0) > 0);
+        const warehouseAll = new Set([primary, ...warehouseWithStock]);
+        if (!item.enableThaw) {
+            return WAREHOUSE_KEYS.filter(k => warehouseAll.has(k));
+        }
+        const issueLoc = item.defaultIssueLocation;
+        const prepExtra = PREP_KEYS.filter(k => k !== issueLoc && (item.locations?.[k] || 0) > 0);
+        const all = new Set([...warehouseAll, ...(issueLoc ? [issueLoc] : []), ...prepExtra]);
+        return [...WAREHOUSE_KEYS, ...PREP_KEYS].filter(k => all.has(k));
+    }
+
+    function renderCountLocInputs(item, keys) {
+        const isPrepGroup = keys.every(k => PREP_KEYS.includes(k));
+        let visible;
+        if (isPrepGroup) {
+            if (!item.enableThaw) return '<div style="color:#ccc;font-size:12px;text-align:center;">—</div>';
+            const issueLoc = item.defaultIssueLocation;
+            visible = keys.filter(k => k === issueLoc || (item.locations?.[k] || 0) > 0);
+        } else {
+            const primary = item.defaultReceiveLocation || 'warehouseFrozen';
+            visible = keys.filter(k => k === primary || (item.locations?.[k] || 0) > 0);
+        }
+        if (!visible.length) return '<div style="color:#ccc;font-size:12px;text-align:center;">—</div>';
+        return `<div class="count-input-stack">${visible.map(key => {
+            const currentDisplay = toDisplayQty(item, normalizeNumber(item.locations?.[key], 0));
+            return `<div class="count-input-row">
+                <span class="count-input-label">${LOCATION_DEFS[key].short}</span>
+                <input class="count-table-input" type="text" inputmode="decimal"
+                    id="count-t-${item.id}-${key}" value="${currentDisplay}" oninput="markCountDirty(${item.id})">
+                <span class="count-input-unit">${escapeHtml(item.displayUnit)}</span>
+            </div>`;
+        }).join("")}</div>`;
+    }
+
+    window.debouncedRenderCountItems = (() => { let tm; return () => { clearTimeout(tm); tm = setTimeout(renderCountItems, 150); }; })();
+
+    function renderCountItems() {
+        const container = document.getElementById("countItems");
+        if (!container) return;
+        const q = (document.getElementById("countSearchInput")?.value || "").trim().toLowerCase();
+        const items = inventoryData.filter(i => i.active !== false)
+            .filter(i => !q || [i.name, i.nameVi || '', i.category, i.displayUnit, i.baseUnit].join(' ').toLowerCase().includes(q));
+        if (!items.length) { container.innerHTML = `<div class="loading-text">${q ? t('no_items') : t('no_count_items')}</div>`; return; }
+
+        const tableRows = items.map(item => `
+            <tr id="count-tr-${item.id}">
+                <td><span class="badge badge-muted">${escapeHtml(itemDisplayCategory(item.category))}</span></td>
+                <td class="name-cell"><strong>${escapeHtml(itemDisplayName(item))}</strong><div class="help">${escapeHtml(item.basePerDisplay)} ${escapeHtml(item.baseUnit)} = 1 ${escapeHtml(item.displayUnit)}</div></td>
+                <td>${renderCountLocInputs(item, WAREHOUSE_KEYS)}</td>
+                <td>${renderCountLocInputs(item, PREP_KEYS)}</td>
+                <td><button class="count-table-confirm-btn" type="button" onclick="submitItemCount(${item.id})">${t('count_confirm_btn')}</button></td>
+            </tr>`).join("");
+
+        const cards = items.map(item => {
+            const locRows = countLocKeys(item).map(key => {
+                const currentDisplay = toDisplayQty(item, normalizeNumber(item.locations?.[key], 0));
+                return `<div class="count-loc-row">
+                    <span class="count-loc-name">${LOCATION_DEFS[key].short}</span>
+                    <span class="count-loc-current">${t('count_current')}${currentDisplay} ${escapeHtml(item.displayUnit)}</span>
+                    <input class="count-loc-input" type="text" inputmode="decimal"
+                        id="count-c-${item.id}-${key}" value="${currentDisplay}" oninput="markCountDirty(${item.id})">
+                    <span class="count-loc-unit">${escapeHtml(item.displayUnit)}</span>
+                </div>`;
+            }).join("");
+            return `<div class="count-card" id="count-card-${item.id}">
+                <div class="count-card-head">
+                    <div><div class="count-card-title">${escapeHtml(itemDisplayName(item))}</div>
+                    <div style="font-size:12px;color:#8a9690;margin-top:2px;">${escapeHtml(itemDisplayCategory(item.category))}｜以 ${escapeHtml(item.displayUnit)} 為單位輸入</div></div>
+                    <span class="badge badge-muted">${escapeHtml(itemDisplayCategory(item.category))}</span>
+                </div>
+                ${locRows}
+                <button class="count-confirm-btn" type="button" onclick="submitItemCount(${item.id})">✓ 確認此品項</button>
+            </div>`;
+        }).join("");
+
+        container.innerHTML = `
+            <div class="count-table-wrap">
+                <table>
+                    <thead><tr>
+                        <th style="width:8%">類別</th>
+                        <th style="text-align:left;width:22%">食材 / 物品</th>
+                        <th style="width:28%">大倉</th>
+                        <th style="width:28%">備貨</th>
+                        <th style="width:14%">確認</th>
+                    </tr></thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            </div>
+            <div class="count-cards-mobile">${cards}</div>`;
+
+        if (fullCountMode) {
+            fullCountConfirmed.forEach(id => {
+                const c = document.getElementById(`count-card-${id}`);
+                if (c) { c.classList.remove('count-dirty'); c.classList.add('count-confirmed'); }
+                const t = document.getElementById(`count-tr-${id}`);
+                if (t) { t.classList.remove('count-dirty'); t.classList.add('count-confirmed'); }
+            });
+            updateFullCountProgress();
+        }
+        updateLastFullCountInfo();
+    }
+
+    window.markCountDirty = function(itemId) {
+        const card = document.getElementById(`count-card-${itemId}`);
+        if (card) { card.classList.add("count-dirty"); card.classList.remove("count-confirmed"); }
+        const tr = document.getElementById(`count-tr-${itemId}`);
+        if (tr) { tr.classList.add("count-dirty"); tr.classList.remove("count-confirmed"); }
+    };
+
+    window.submitItemCount = function(itemId) {
+        if (!guardOnline()) return;
+        const item = inventoryData.find(i => String(i.id) === String(itemId));
+        if (!item) return;
+        const allowed = countLocKeys(item);
+        const useTable = window.innerWidth > 680;
+        const prefix = useTable ? `count-t-${itemId}-` : `count-c-${itemId}-`;
+        const newVals = {};
+        for (const key of allowed) {
+            const raw = document.getElementById(`${prefix}${key}`)?.value ?? "";
+            const n = normalizeNumber(raw, NaN);
+            if (!Number.isFinite(n) || n < 0) {
+                alert(`【${LOCATION_DEFS[key]?.name || key}】數量無效，請輸入 0 或正數。`);
+                return;
+            }
+            newVals[key] = roundQty(item.displayUnit !== item.baseUnit ? n * item.basePerDisplay : n);
+        }
+        runStockTransaction((items, txLogs) => {
+            const it = items.find(i => String(i.id) === String(itemId));
+            if (!it) { alert(t('item_not_found')); return false; }
+            const changes = [];
+            let netAdjBase = 0;
+            for (const key of allowed) {
+                const oldBase = roundQty(normalizeNumber(it.locations?.[key], 0));
+                const newBase = newVals[key];
+                if (Math.abs(newBase - oldBase) < 0.001) continue;
+                const oldTxt = formatQty(it, oldBase, { compact: true });
+                const newTxt = formatQty(it, newBase, { compact: true });
+                const diffBase = roundQty(newBase - oldBase);
+                const diffTxt = (diffBase > 0 ? "+" : "-") + formatQty(it, Math.abs(diffBase), { compact: true });
+                netAdjBase += diffBase;
+                it.locations[key] = newBase;
+                changes.push(`${LOCATION_DEFS[key]?.short || key}：${oldTxt} → ${newTxt}（${diffTxt}）`);
+            }
+            if (!changes.length) { showToast(t('toast_no_change')); return 'noop'; }
+            pushLog(txLogs, `📋 盤點修正：【${it.name}】${changes.join("，")}`, { itemId: it.id, actionType: "count", netAdjBase: roundQty(netAdjBase) });
+        }).then(ok => {
+            if (!ok) return;
+            const card = document.getElementById(`count-card-${itemId}`);
+            if (card) { card.classList.remove("count-dirty"); card.classList.add("count-confirmed"); }
+            const tr = document.getElementById(`count-tr-${itemId}`);
+            if (tr) { tr.classList.remove("count-dirty"); tr.classList.add("count-confirmed"); }
+            if (fullCountMode) {
+                fullCountConfirmed.add(String(itemId));
+                updateFullCountProgress();
+            }
+        });
+    };
+
+
+    applyStaticLang();
+
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+            navigator.serviceWorker.register("./sw.js").catch(err => console.warn("Service Worker 註冊失敗", err));
+        });
+    }
+
+</script>
+
+<div id="viTip" class="vi-tip-overlay hidden" onclick="closeViTip()">
+    <div class="vi-tip-box" onclick="event.stopPropagation()">
+        <div class="vi-tip-icon">💡</div>
+        <p class="vi-tip-title">Tên nguyên liệu vẫn hiển thị tiếng Trung?</p>
+        <p class="vi-tip-body">Nhấn <strong>⋮</strong> góc trên phải trình duyệt<br>→ chọn <strong class="vi-tip-zh">「翻譯成越南文」</strong><br>để dịch toàn bộ tên nguyên liệu.</p>
+        <button class="vi-tip-btn" onclick="closeViTip()">Đã hiểu</button>
+    </div>
+</div>
+</body>
+</html>

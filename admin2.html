@@ -1,0 +1,2906 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> ⚙️ 蔡叔叔比薩屋 後場管理後台 </title>
+    <style>
+        :root { --primary: #2e7d32; --danger: #c62828; --bg: #f4f6f8; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); min-height: 100vh; }
+
+        /* PIN Screen */
+        #pinScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 16px; }
+        #pinScreen h1 { font-size: 22px; color: #333; }
+        #pinScreen p { color: #666; font-size: 14px; }
+        .pin-input { padding: 12px 20px; font-size: 24px; letter-spacing: 8px; border: 2px solid #ccc; border-radius: 8px; text-align: center; width: 180px; outline: none; }
+        .pin-input:focus { border-color: var(--primary); }
+        .pin-error { color: var(--danger); font-size: 14px; min-height: 20px; }
+
+        /* Admin Layout */
+        #adminPanel { display: none; }
+        .admin-header { background: #1b5e20; color: white; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .admin-header h1 { font-size: 18px; }
+        .sync-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 12px; border-radius: 20px; background: rgba(255,255,255,0.15); color: #fff; white-space: nowrap; }
+        .sync-status .dot { width: 8px; height: 8px; border-radius: 50%; background: #ffc107; }
+        .sync-status.sync-synced .dot { background: #8bc34a; }
+        .sync-status.sync-failed .dot { background: #ff5252; }
+        .app-version { font-size: 11px; opacity: 0.65; font-weight: normal; margin-left: 6px; }
+
+        /* Buttons */
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; transition: opacity 0.15s; text-decoration: none; display: inline-block; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-outline { background: white; border: 1px solid #ccc; color: #333; }
+        .btn-sm { padding: 4px 10px; font-size: 13px; }
+
+        /* Tabs */
+        .tabs { background: white; border-bottom: 2px solid #e0e0e0; display: flex; overflow-x: auto; }
+        .tab { padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 3px solid transparent; color: #666; white-space: nowrap; user-select: none; }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: bold; }
+
+        /* Tab Content */
+        .tab-content { display: none; padding: 20px; max-width: 1200px; margin: auto; }
+        .tab-content.active { display: block; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .section-header h2 { font-size: 18px; color: #333; }
+
+        /* Table */
+        .table-wrap { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { background: #f5f5f5; padding: 10px 12px; text-align: left; font-weight: bold; color: #555; white-space: nowrap; }
+        td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        .badge { padding: 2px 8px; border-radius: 20px; font-size: 12px; }
+        .badge-on { background: #e8f5e9; color: #2e7d32; }
+        .badge-off { background: #f5f5f5; color: #999; }
+        .inactive-row td { opacity: 0.5; }
+        .action-cell { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; padding: 16px; }
+        .modal-overlay.open { display: flex; }
+        .modal { background: white; border-radius: 14px; padding: 28px; width: 100%; max-width: min(700px, 95vw); max-height: 92vh; overflow-y: auto; }
+        .modal h2 { margin-bottom: 20px; font-size: 20px; color: #1b5e20; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; padding: 11px 14px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; font-family: inherit; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(46,125,50,0.12); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+        .help-text { font-size: 12px; color: #999; margin-top: 4px; }
+        .form-section-title { font-size: 13px; font-weight: 700; color: #1b5e20; letter-spacing: 1px; margin: 24px 0 12px; padding-bottom: 6px; border-bottom: 1px solid #e4ebe6; }
+        .form-section-title.first { margin-top: 4px; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; border-top: 1px solid #eee; padding-top: 18px; }
+
+        /* 允許庫位 pill chips */
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 6px; }
+        .checkbox-group label {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 16px; border: 1.5px solid #ddd; border-radius: 20px;
+            font-size: 14px; font-weight: normal; white-space: nowrap;
+            cursor: pointer; background: #fff; user-select: none;
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+        }
+        .checkbox-group label:has(input:checked) {
+            background: #e8f5e9; border-color: var(--primary); color: var(--primary); font-weight: 600;
+        }
+        .checkbox-group input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0; }
+
+        /* Category */
+        .card-list { background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .card-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+        .card-item:last-child { border-bottom: none; }
+        .add-row { display: flex; gap: 8px; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-top: 12px; }
+        .add-row input { flex: 1; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; font-family: inherit; }
+        .add-row input:focus { outline: none; border-color: var(--primary); }
+
+        /* Settings Layout */
+        .settings-layout { display:flex; min-height:500px; background:white; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,0.08); overflow:hidden; }
+        .settings-nav { width:190px; flex-shrink:0; border-right:1px solid #eee; background:#f7f7f7; padding:8px 0; }
+        .settings-nav-item { display:flex; align-items:center; gap:10px; padding:12px 16px; font-size:14px; color:#444; cursor:pointer; transition:background .12s; user-select:none; }
+        .settings-nav-item:hover { background:#efefef; }
+        .settings-nav-item.active { background:#e8f5e9; color:var(--primary); font-weight:600; border-right:3px solid var(--primary); }
+        .settings-nav-icon { font-size:17px; }
+        .settings-main { flex:1; overflow-y:auto; min-width:0; }
+        .settings-section { display:none; padding:24px; }
+        .settings-section.active { display:block; }
+        .settings-section > h2 { font-size:17px; font-weight:700; color:#333; margin-bottom:20px; }
+        .settings-back-btn { display:none; align-items:center; gap:6px; padding:12px 16px; font-size:14px; color:var(--primary); cursor:pointer; border-bottom:1px solid #eee; background:#f7f7f7; font-weight:600; width:100%; border:none; text-align:left; }
+        @media (max-width:860px) {
+            .settings-layout {
+                flex-direction: column;
+                background: transparent;
+                box-shadow: none;
+                border-radius: 0;
+                min-height: 0;
+            }
+            .settings-nav {
+                width: 100% !important;
+                display: flex !important;
+                flex-direction: row;
+                border-right: none;
+                border-radius: 10px;
+                padding: 6px;
+                gap: 4px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                margin-bottom: 8px;
+            }
+            .settings-nav::-webkit-scrollbar { display: none; }
+            .settings-nav-item {
+                flex-shrink: 0;
+                border-radius: 20px;
+                padding: 8px 14px;
+                font-size: 13px;
+            }
+            .settings-nav-item.active { border-right: none; }
+            .settings-main {
+                display: block !important;
+                background: white;
+                border-radius: 10px;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+                overflow: hidden;
+            }
+            .settings-back-btn { display: none !important; }
+            .settings-section { padding: 14px; }
+        }
+        /* Settings */
+        .settings-card { background:#f9f9f9; border:1px solid #eee; border-radius:8px; padding:20px; }
+        .settings-card h3 { margin-bottom:14px; font-size:16px; color:#333; }
+        .step-details { border: 1px solid #e8e8e8; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+        .step-details > summary { padding: 12px 14px; font-size: 14px; font-weight: 600; color: #333; cursor: pointer; background: #fafafa; display: flex; align-items: center; gap: 10px; list-style: none; }
+        .step-details > summary::-webkit-details-marker { display: none; }
+        .step-details > summary::marker { display: none; }
+        .step-details[open] > summary { border-bottom: 1px solid #e8e8e8; }
+        .step-details > div { padding: 14px; }
+        .step-num { background: var(--primary); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+        .toggle-group { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; }
+        .toggle-group label { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; font-weight: normal; }
+        .toggle-group input[type="checkbox"] { width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary); }
+        .action-loc-select { flex: 1; padding: 7px 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; font-family: inherit; background: #fff; }
+        .action-loc-select:focus { outline: none; border-color: var(--primary); }
+
+        /* Report */
+        .report-controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:20px; background:#f8faf9; border-radius:12px; padding:16px; }
+        .preset-btns { display:flex; flex-wrap:wrap; gap:6px; }
+        .preset-btn { padding:7px 14px; border:1.5px solid #cdd7d1; border-radius:20px; background:#fff; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; color:#3a5a48; }
+        .preset-btn.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+        .report-custom-dates { display:flex; align-items:center; gap:8px; font-size:13px; flex-wrap:wrap; }
+        .report-custom-dates input[type="date"] { border:1.5px solid #cdd7d1; border-radius:8px; padding:6px 10px; font-size:13px; background:#fff; }
+        .report-filter-sel { border:1.5px solid #cdd7d1; border-radius:8px; padding:7px 10px; font-size:13px; background:#fff; min-width:140px; }
+        .report-summary { font-size:13px; font-weight:700; color:#3a5a48; margin-bottom:12px; }
+        .report-note { font-size:11px; color:#9aaba3; margin-top:8px; line-height:1.6; }
+        td.num-cell { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+        th.sort-th { cursor:pointer; user-select:none; }
+        th.sort-th:hover { background:#ececec; }
+        .sort-ind { margin-left:4px; font-size:10px; color:var(--primary); }
+
+        /* Toast */
+        #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; display: none; z-index: 200; pointer-events: none; white-space: nowrap; }
+
+        /* Offline Banner */
+        #offlineBanner { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: #b71c1c; color: #fff; padding: 12px 20px; text-align: center; font-size: 14px; font-weight: 700; display: none; box-shadow: 0 2px 10px rgba(183,28,28,0.45); letter-spacing: 0.3px; }
+        #offlineBanner.show { display: block; }
+        @keyframes banner-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+        #offlineBanner.shake { animation: banner-shake 0.38s ease; }
+        body.is-offline { padding-top: 44px; }
+    </style>
+</head>
+<body>
+<div id="offlineBanner">📵 目前離線 — 管理操作可能無法儲存，請確認網路連線後再操作</div>
+
+<!-- PIN Screen -->
+<div id="pinScreen">
+    <h1>🍕 蔡叔叔比薩屋</h1>
+    <p>後場管理後台 — 請輸入 PIN 碼</p>
+    <input type="password" class="pin-input" id="pinInput" maxlength="4" inputmode="numeric" placeholder="••••" autofocus>
+    <div class="pin-error" id="pinError"></div>
+    <button class="btn btn-primary" onclick="checkPin()">進入後台</button>
+</div>
+
+<!-- Admin Panel -->
+<div id="adminPanel">
+    <div class="admin-header">
+        <h1>⚙️ 蔡叔叔比薩屋 後場管理後台<span class="app-version">v86</span></h1>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <div class="sync-status" id="syncStatus"><span class="dot"></span><span id="syncText">同步中…</span></div>
+            <a href="index.html" class="btn btn-outline btn-sm">← 員工頁</a>
+            <button class="btn btn-outline btn-sm" onclick="logout()">登出</button>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" data-tab="items" onclick="switchTab('items')">品項管理</div>
+        <div class="tab" data-tab="categories" onclick="switchTab('categories')">分類管理</div>
+        <div class="tab" data-tab="orders" onclick="switchTab('orders')">叫貨管理</div>
+        <div class="tab" data-tab="sales" onclick="switchTab('sales')">銷售看板</div>
+        <div class="tab" data-tab="reports" onclick="switchTab('reports')">報表中心</div>
+        <div class="tab" data-tab="settings" onclick="switchTab('settings')">系統設定</div>
+    </div>
+
+    <!-- 品項管理 -->
+    <div id="tab-items" class="tab-content active">
+        <div class="section-header">
+            <h2>品項管理</h2>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-outline btn-sm" onclick="exportItemsBackup()">⬇ 匯出備份</button>
+                <button class="btn btn-primary btn-sm" onclick="openItemEditor()">＋ 新增品項</button>
+            </div>
+        </div>
+        <div style="margin-bottom:14px;">
+            <input type="search" id="itemSearchInput" placeholder="搜尋品項、分類或單位…" oninput="onItemSearch()"
+                style="width:100%;max-width:480px;border:1px solid #cdd7d1;border-radius:12px;padding:10px 12px;background:#fff;color:#26332d;font-size:14px;font-family:inherit;outline-color:var(--primary);">
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>排序</th>
+                        <th>品項</th>
+                        <th>單位換算</th>
+                        <th>總庫存</th>
+                        <th>安全線</th>
+                        <th>倉位（入庫／消耗）</th>
+                        <th>狀態</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="itemsBody">
+                    <tr><td colspan="8" style="text-align:center;color:#999;padding:20px;">載入中…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 分類管理 -->
+    <div id="tab-categories" class="tab-content">
+        <div class="section-header">
+            <h2>分類管理</h2>
+        </div>
+        <div class="card-list" id="categoryList"></div>
+        <div class="add-row">
+            <input type="text" id="newCatInput" placeholder="新分類名稱" onkeydown="if(event.key==='Enter')addCategory()">
+            <button class="btn btn-primary btn-sm" onclick="addCategory()">新增</button>
+        </div>
+        <div class="section-header" style="margin-top:28px;">
+            <h2>越南語對照</h2>
+        </div>
+        <div class="card-list" style="padding:16px;">
+            <p style="font-size:13px;color:#666;margin-bottom:14px;">設定各分類的越南語顯示名稱，員工切換 VI 後分類篩選按鈕會顯示對應翻譯。</p>
+            <div id="catTransContainer"></div>
+            <button class="btn btn-primary" style="margin-top:4px;" onclick="saveCatTranslations()">儲存翻譯</button>
+        </div>
+    </div>
+
+    <!-- 叫貨 -->
+    <div id="tab-orders" class="tab-content">
+        <div class="section-header">
+            <h2>叫貨管理</h2>
+            <button class="btn btn-primary btn-sm" onclick="openOrderEditor()">＋ 新增叫貨單</button>
+        </div>
+
+        <div id="lowStockPanel" style="display:none;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:14px 16px;margin-bottom:16px;">
+            <div style="font-weight:bold;color:#8d6e00;margin-bottom:10px;">⚠️ 低庫存品項（尚無進行中叫貨單）</div>
+            <div id="lowStockList" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+        </div>
+
+        <div class="section-header"><h2 style="font-size:16px;">進行中</h2></div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>品項</th><th>叫貨量／簽收</th><th>狀態</th><th>建立時間</th><th>備註</th><th>操作</th></tr>
+                </thead>
+                <tbody id="ordersActiveBody">
+                    <tr><td colspan="6" style="text-align:center;color:#999;padding:20px;">載入中…</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section-header" style="margin-top:24px;">
+            <h2 style="font-size:16px;">已完成</h2>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-outline btn-sm" onclick="exportDoneOrdersXlsx()">⬇ 匯出 Excel</button>
+                <button class="btn btn-danger btn-sm" onclick="clearDoneOrders()">清除全部紀錄</button>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>品項</th><th>叫貨量／簽收</th><th>入庫</th><th>狀態</th><th>完成時間</th><th>備註</th><th>操作</th></tr>
+                </thead>
+                <tbody id="ordersDoneBody">
+                    <tr><td colspan="6" style="text-align:center;color:#999;padding:20px;">載入中…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 銷售 -->
+    <div id="tab-sales" class="tab-content">
+        <div class="section-header">
+            <h2>銷售看板</h2>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-outline btn-sm" onclick="exportSalesXlsx()">⬇ 匯出 Excel</button>
+                <button class="btn btn-outline btn-sm" onclick="exportSalesToSheet()">↗ 匯出 Google Sheet</button>
+                <button class="btn btn-outline btn-sm" onclick="toggleSalesSetup()">品項設定</button>
+            </div>
+        </div>
+
+        <div id="salesSetupPanel" style="display:none;max-width:480px;margin-bottom:18px;background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:16px;">
+            <h3 style="font-size:15px;color:#333;margin-bottom:12px;">銷售品項設定</h3>
+            <div class="card-list" id="salesItemList" style="box-shadow:none;border:1px solid #eee;"></div>
+            <div class="add-row" style="box-shadow:none;border:1px solid #eee;">
+                <input type="text" id="newSalesItemInput" placeholder="新銷售品項名稱（例：9吋厚）" onkeydown="if(event.key==='Enter')addSalesItem()">
+                <button class="btn btn-primary btn-sm" onclick="addSalesItem()">新增</button>
+            </div>
+            <div style="margin-top:16px;border-top:1px solid #eee;padding-top:14px;">
+                <label style="display:block;font-size:13px;color:#555;font-weight:bold;margin-bottom:5px;">Google Sheet 匯出端點（選填）</label>
+                <input type="text" id="gsheetEndpointInput" placeholder="貼上 Apps Script 網路應用程式網址"
+                    style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #ccc;border-radius:8px;font-size:13px;font-family:inherit;">
+                <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                    <button class="btn btn-primary btn-sm" onclick="saveGsheetEndpoint()">儲存端點</button>
+                    <span class="help-text" style="margin:0;">設定後「匯出 Google Sheet」按鈕才能使用，設定步驟見系統維護說明</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="salesKpis" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;"></div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr id="salesHeadRow"><th>日期</th></tr></thead>
+                <tbody id="salesBody">
+                    <tr><td style="text-align:center;color:#999;padding:20px;">載入中…</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="report-note">同一天多筆回報自動加總，點「筆數」可展開當日明細。表格顯示最近 30 天，匯出（Excel／Google Sheet）包含全部。</div>
+    </div>
+
+    <!-- 報表 -->
+    <div id="tab-reports" class="tab-content">
+        <div class="section-header">
+            <h2>報表中心</h2>
+            <button class="btn btn-outline btn-sm" id="exportCsvBtn" style="display:none;" onclick="exportReportXlsx()">⬇ 匯出 Excel</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;" id="reportTypeChips">
+            <button class="preset-btn active" data-rt="movement" onclick="setReportType('movement')">庫存異動</button>
+            <button class="preset-btn" data-rt="consume" onclick="setReportType('consume')">消耗排行</button>
+            <button class="preset-btn" data-rt="waste" onclick="setReportType('waste')">報廢統計</button>
+            <button class="preset-btn" data-rt="countdiff" onclick="setReportType('countdiff')">盤點差異</button>
+            <button class="preset-btn" data-rt="orders" onclick="setReportType('orders')">叫貨分析</button>
+            <button class="preset-btn" data-rt="txlog" onclick="setReportType('txlog')">異動明細</button>
+        </div>
+        <div class="report-controls">
+            <div class="preset-btns">
+                <button class="preset-btn active" data-preset="today"     onclick="setPreset('today')">今天</button>
+                <button class="preset-btn"         data-preset="yesterday" onclick="setPreset('yesterday')">昨天</button>
+                <button class="preset-btn"         data-preset="week"      onclick="setPreset('week')">本週</button>
+                <button class="preset-btn"         data-preset="month"     onclick="setPreset('month')">本月</button>
+                <button class="preset-btn"         data-preset="custom"    onclick="setPreset('custom')">自訂</button>
+            </div>
+            <div class="report-custom-dates" id="reportCustomDates" style="display:none;">
+                <label>從 <input type="date" id="reportStart"></label>
+                <label>到 <input type="date" id="reportEnd"></label>
+            </div>
+            <select class="report-filter-sel" id="reportCatFilter">
+                <option value="">全部分類</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="generateReport()">查詢</button>
+        </div>
+        <div class="report-summary" id="reportSummary"></div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr id="reportHeadRow">
+                        <th class="sort-th" onclick="sortReport('name')">品項<span class="sort-ind" id="sort-name"></span></th>
+                        <th class="sort-th" onclick="sortReport('category')">類別<span class="sort-ind" id="sort-category"></span></th>
+                        <th class="sort-th" style="text-align:right;" onclick="sortReport('opening')">期初庫存<span class="sort-ind" id="sort-opening"></span></th>
+                        <th class="sort-th" style="text-align:right;" onclick="sortReport('receive')">入庫 ＋<span class="sort-ind" id="sort-receive"></span></th>
+                        <th class="sort-th" style="text-align:right;" onclick="sortReport('consume')">消耗 −<span class="sort-ind" id="sort-consume"></span></th>
+                        <th class="sort-th" style="text-align:right;" onclick="sortReport('ret')">回放 ＋<span class="sort-ind" id="sort-ret"></span></th>
+                        <th class="sort-th" style="text-align:right;" onclick="sortReport('waste')">報廢 −<span class="sort-ind" id="sort-waste"></span></th>
+                        <th class="sort-th" style="text-align:right;" onclick="sortReport('adj')">盤點調整<span class="sort-ind" id="sort-adj"></span></th>
+                        <th class="sort-th" style="text-align:right;" onclick="sortReport('closing')">期末庫存<span class="sort-ind" id="sort-closing"></span></th>
+                    </tr>
+                </thead>
+                <tbody id="reportBody">
+                    <tr><td colspan="9" style="text-align:center;color:#999;padding:20px;">點擊「查詢」產生報表</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="report-note" id="reportNote">⚠️ 期初庫存 = 期末庫存 − 入庫 − 回放 + 消耗 + 報廢 − 盤點調整，以「目前庫存」回推。盤點調整欄僅統計此版本更新後的盤點記錄，舊記錄顯示「—」。</div>
+    </div>
+
+    <!-- 系統設定 -->
+    <div id="tab-settings" class="tab-content">
+        <div class="settings-layout">
+
+            <!-- Sidebar -->
+            <nav class="settings-nav">
+                <div class="settings-nav-item active" data-section="pin" onclick="showSettingsSection('pin')">
+                    <span class="settings-nav-icon">🔒</span>PIN 碼管理
+                </div>
+                <div class="settings-nav-item" data-section="items-tool" onclick="showSettingsSection('items-tool')">
+                    <span class="settings-nav-icon">📦</span>品項工具
+                </div>
+                <div class="settings-nav-item" data-section="vi" onclick="showSettingsSection('vi')">
+                    <span class="settings-nav-icon">🇻🇳</span>越南語翻譯
+                </div>
+                <div class="settings-nav-item" data-section="announce" onclick="showSettingsSection('announce')">
+                    <span class="settings-nav-icon">📢</span>公告設定
+                </div>
+                <div class="settings-nav-item" data-section="maintenance" onclick="showSettingsSection('maintenance')">
+                    <span class="settings-nav-icon">🛠️</span>系統維護
+                </div>
+            </nav>
+
+            <!-- Content -->
+            <div class="settings-main">
+                <button class="settings-back-btn" onclick="settingsNavBack()">‹ 返回</button>
+
+                <!-- PIN 碼管理 -->
+                <div id="settings-pin" class="settings-section active">
+                    <h2>PIN 碼管理</h2>
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;">
+                        <div class="settings-card" style="flex:1;min-width:240px;">
+                            <h3>管理後台 PIN 碼</h3>
+                            <p style="font-size:13px;color:#666;margin-bottom:12px;">登入管理後台使用。</p>
+                            <div class="form-group">
+                                <label>目前 PIN 碼</label>
+                                <div id="adminPinDisplay" style="font-size:22px;letter-spacing:8px;font-weight:700;color:#1b5e20;padding:4px 0;">––</div>
+                            </div>
+                            <div class="form-group">
+                                <label>新 PIN 碼（4 位數字）</label>
+                                <input type="password" id="newPin" maxlength="4" inputmode="numeric" placeholder="輸入新 PIN">
+                            </div>
+                            <div class="form-group">
+                                <label>確認新 PIN 碼</label>
+                                <input type="password" id="confirmPin" maxlength="4" inputmode="numeric" placeholder="再次輸入新 PIN">
+                            </div>
+                            <button class="btn btn-primary" onclick="changePin()">儲存</button>
+                        </div>
+                        <div class="settings-card" style="flex:1;min-width:240px;">
+                            <h3>盤點 PIN 碼</h3>
+                            <p style="font-size:13px;color:#666;margin-bottom:12px;">員工進入盤點功能時須輸入此 PIN 碼。</p>
+                            <div class="form-group">
+                                <label>目前 PIN 碼</label>
+                                <div id="countPinDisplay" style="font-size:22px;letter-spacing:8px;font-weight:700;color:#1b5e20;padding:4px 0;">––</div>
+                            </div>
+                            <div class="form-group">
+                                <label>新 PIN 碼（4 位數字）</label>
+                                <input type="password" id="newCountPin" maxlength="4" inputmode="numeric" placeholder="輸入新 PIN">
+                            </div>
+                            <div class="form-group">
+                                <label>確認新 PIN 碼</label>
+                                <input type="password" id="confirmCountPin" maxlength="4" inputmode="numeric" placeholder="再次輸入新 PIN">
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn btn-primary" onclick="changeCountPin()">儲存</button>
+                                <button class="btn btn-outline" onclick="clearCountPin()">清除</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 品項工具 -->
+                <div id="settings-items-tool" class="settings-section">
+                    <h2>品項工具</h2>
+                    <p style="font-size:13px;color:#666;margin-bottom:16px;">準備好 Excel / Numbers 檔案，依步驟操作即可一次匯入多筆品項。同名品項自動跳過。</p>
+                    <details class="step-details" open>
+                        <summary><span class="step-num">1</span>下載 Excel / Numbers 範本</summary>
+                        <div>
+                            <p style="font-size:13px;color:#555;margin-bottom:10px;">下載已填好欄位標題及示範資料的 CSV 檔，用 Excel 或 Numbers 開啟後直接填寫，完成後刪除示範列。</p>
+                            <div style="overflow-x:auto;margin-bottom:12px;">
+                                <table style="width:100%;font-size:12px;border-collapse:collapse;color:#444;">
+                                    <thead><tr style="background:#f5f5f5;">
+                                        <th style="padding:6px 10px;text-align:left;border:1px solid #e0e0e0;">欄位</th>
+                                        <th style="padding:6px 10px;text-align:left;border:1px solid #e0e0e0;">必填</th>
+                                        <th style="padding:6px 10px;text-align:left;border:1px solid #e0e0e0;">說明</th>
+                                    </tr></thead>
+                                    <tbody>
+                                        <tr><td style="padding:5px 10px;border:1px solid #e0e0e0;">品項名稱</td><td style="padding:5px 10px;border:1px solid #e0e0e0;color:#c62828;font-weight:600;">必填</td><td style="padding:5px 10px;border:1px solid #e0e0e0;">品項名稱，同名會自動跳過</td></tr>
+                                        <tr><td style="padding:5px 10px;border:1px solid #e0e0e0;">分類</td><td style="padding:5px 10px;border:1px solid #e0e0e0;color:#c62828;font-weight:600;">必填</td><td style="padding:5px 10px;border:1px solid #e0e0e0;">必須是系統已存在的分類名稱</td></tr>
+                                        <tr><td style="padding:5px 10px;border:1px solid #e0e0e0;">顯示單位</td><td style="padding:5px 10px;border:1px solid #e0e0e0;color:#c62828;font-weight:600;">必填</td><td style="padding:5px 10px;border:1px solid #e0e0e0;">例如：包、瓶、kg</td></tr>
+                                        <tr style="background:#fafafa;"><td style="padding:5px 10px;border:1px solid #e0e0e0;">基準單位</td><td style="padding:5px 10px;border:1px solid #e0e0e0;color:#999;">選填</td><td style="padding:5px 10px;border:1px solid #e0e0e0;">不填則同顯示單位</td></tr>
+                                        <tr style="background:#fafafa;"><td style="padding:5px 10px;border:1px solid #e0e0e0;">換算數量</td><td style="padding:5px 10px;border:1px solid #e0e0e0;color:#999;">選填</td><td style="padding:5px 10px;border:1px solid #e0e0e0;">1 顯示單位 = ? 基準單位，不填預設 1</td></tr>
+                                        <tr style="background:#fafafa;"><td style="padding:5px 10px;border:1px solid #e0e0e0;">庫存類型</td><td style="padding:5px 10px;border:1px solid #e0e0e0;color:#999;">選填</td><td style="padding:5px 10px;border:1px solid #e0e0e0;">冷凍 / 冷藏 / 常溫，不填預設冷凍</td></tr>
+                                        <tr style="background:#fafafa;"><td style="padding:5px 10px;border:1px solid #e0e0e0;">安全庫存</td><td style="padding:5px 10px;border:1px solid #e0e0e0;color:#999;">選填</td><td style="padding:5px 10px;border:1px solid #e0e0e0;">低於此數量顯示警示，不填預設 0</td></tr>
+                                        <tr style="background:#fafafa;"><td style="padding:5px 10px;border:1px solid #e0e0e0;">備註</td><td style="padding:5px 10px;border:1px solid #e0e0e0;color:#999;">選填</td><td style="padding:5px 10px;border:1px solid #e0e0e0;">品項備註說明</td></tr>
+                                        <tr style="background:#fafafa;"><td style="padding:5px 10px;border:1px solid #e0e0e0;">越南語名稱</td><td style="padding:5px 10px;border:1px solid #e0e0e0;color:#999;">選填</td><td style="padding:5px 10px;border:1px solid #e0e0e0;">可留空，之後再用批次翻譯補上</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button class="btn btn-primary" onclick="downloadBatchTemplate()">⬇ 下載 CSV 範本</button>
+                        </div>
+                    </details>
+                    <details class="step-details">
+                        <summary><span class="step-num">2</span>複製 Gemini 提示詞（將表格轉成 JSON）</summary>
+                        <div>
+                            <p style="font-size:13px;color:#555;margin-bottom:8px;">在 Excel / Numbers 中全選表格（含標題列）→ 複製 → 打開 Gemini → 貼上以下提示詞，<strong>再於最後貼上複製的表格內容</strong>，送出後取得 JSON。</p>
+                            <textarea id="batchPromptText" readonly rows="10"
+                                style="width:100%;font-size:12px;font-family:monospace;border:1px solid #ccc;border-radius:8px;padding:10px;resize:vertical;background:#f9f9f9;margin-bottom:8px;"></textarea>
+                            <button class="btn btn-outline" onclick="copyBatchPrompt()">複製提示詞</button>
+                        </div>
+                    </details>
+                    <details class="step-details" open>
+                        <summary><span class="step-num">3</span>貼入 JSON 並匯入</summary>
+                        <div>
+                            <p style="font-size:13px;color:#555;margin-bottom:8px;">將 Gemini 回傳的 JSON 貼到下方，或直接上傳 JSON 檔（例如「匯出備份」的檔案），按「預覽」確認無誤後再匯入。</p>
+                            <textarea id="batchImportText" rows="8" placeholder='貼上 Gemini 回傳的 JSON 內容…'
+                                style="width:100%;font-size:13px;font-family:monospace;border:1px solid #ccc;border-radius:8px;padding:10px;resize:vertical;margin-bottom:8px;"></textarea>
+                            <input type="file" id="batchImportFile" accept=".json,application/json" style="display:none;" onchange="loadBatchImportFile(this)">
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button class="btn btn-outline" onclick="document.getElementById('batchImportFile').click()">上傳 JSON 檔</button>
+                                <button class="btn btn-outline" onclick="previewBatchImport()">預覽</button>
+                                <button class="btn btn-primary" id="confirmImportBtn" style="display:none;" onclick="confirmBatchImport()">確認匯入</button>
+                                <button class="btn btn-outline" id="cancelImportBtn" style="display:none;" onclick="cancelBatchImport()">取消</button>
+                            </div>
+                            <div id="batchImportPreview" style="margin-top:12px;"></div>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- 越南語翻譯 -->
+                <div id="settings-vi" class="settings-section">
+                    <h2>越南語翻譯</h2>
+                    <p style="font-size:13px;color:#666;margin-bottom:16px;">產生提示詞貼給 Gemini，再將回傳結果貼回匯入。只會產生尚未有越南語對照的分類與品項。</p>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+                        <button class="btn btn-outline" onclick="genViPrompt()">① 產生 Gemini 提示詞</button>
+                        <button class="btn btn-outline" onclick="showViImport()">② 匯入翻譯結果</button>
+                    </div>
+                    <div id="viPromptArea" style="display:none;">
+                        <p style="font-size:13px;color:#555;margin-bottom:6px;">複製以下內容，貼給 Gemini：</p>
+                        <textarea id="viPromptText" readonly rows="10"
+                            style="width:100%;font-size:13px;font-family:monospace;border:1px solid #ccc;border-radius:8px;padding:10px;resize:vertical;background:#f9f9f9;"></textarea>
+                        <button class="btn btn-outline" style="margin-top:8px;" onclick="copyViPrompt()">複製提示詞</button>
+                    </div>
+                    <div id="viImportArea" style="display:none;">
+                        <p style="font-size:13px;color:#555;margin-bottom:6px;">將 Gemini 回傳的 JSON 貼到下方：</p>
+                        <textarea id="viImportText" rows="10" placeholder='[{"type":"category","name":"肉類","nameVi":"Thịt"},{"type":"item","id":1,"name":"牛肉","nameVi":"Thịt bò"},...]'
+                            style="width:100%;font-size:13px;font-family:monospace;border:1px solid #ccc;border-radius:8px;padding:10px;resize:vertical;"></textarea>
+                        <div style="display:flex;gap:8px;margin-top:8px;">
+                            <button class="btn btn-primary" onclick="importViTranslations()">匯入</button>
+                            <button class="btn btn-outline" onclick="document.getElementById('viImportArea').style.display='none'">取消</button>
+                        </div>
+                        <div id="viImportMsg" style="margin-top:8px;font-size:13px;"></div>
+                    </div>
+                </div>
+
+                <!-- 公告設定 -->
+                <div id="settings-announce" class="settings-section">
+                    <h2>公告設定</h2>
+                    <div class="settings-card" style="max-width:560px;">
+                        <p style="font-size:13px;color:#666;margin-bottom:14px;">設定後前台會顯示公告橫幅（大聲公）給員工看。可設定上稿／下稿時間排程，時間到自動顯示或隱藏；不設定時間則立即生效、持續顯示。</p>
+
+                        <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;margin-bottom:14px;">
+                            <input type="checkbox" id="annEnabled" style="width:16px;height:16px;accent-color:var(--primary);">
+                            <strong>啟用公告</strong>
+                        </label>
+
+                        <div class="form-group">
+                            <label>公告內容</label>
+                            <textarea id="annText" rows="3" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #c8d5cf;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;" placeholder="例：今日大倉冷凍櫃維修，暫勿存放；備料請提前一小時..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>顯示樣式</label>
+                            <select id="annMode">
+                                <option value="marquee">跑馬燈（文字橫向捲動）</option>
+                                <option value="static">靜態橫幅（完整顯示）</option>
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>上稿時間（選填）</label>
+                                <input type="datetime-local" id="annStart">
+                                <div class="help-text">留空＝立即顯示</div>
+                            </div>
+                            <div class="form-group">
+                                <label>下稿時間（選填）</label>
+                                <input type="datetime-local" id="annEnd">
+                                <div class="help-text">留空＝持續顯示</div>
+                            </div>
+                        </div>
+
+                        <div id="annPreview" style="margin:8px 0 16px;"></div>
+
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-primary" onclick="saveAnnouncement()">儲存公告</button>
+                            <button class="btn btn-outline" onclick="clearAnnouncement()">清除並停用</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 系統維護 -->
+                <div id="settings-maintenance" class="settings-section">
+                    <h2>系統維護</h2>
+                    <div class="settings-card" style="max-width:480px;margin-bottom:16px;">
+                        <h3>前台功能</h3>
+                        <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;">
+                            <input type="checkbox" id="showReceiveToggle" onchange="toggleShowReceive(this.checked)" style="width:16px;height:16px;accent-color:var(--primary);">
+                            前台顯示「入庫」按鈕
+                        </label>
+                        <p style="font-size:12px;color:#999;margin-top:8px;">正常進貨由叫貨簽收自動入庫，建議關閉避免員工誤觸；臨時採購需要手動入庫時再開啟。設定即時同步到所有裝置。</p>
+                    </div>
+                    <div class="settings-card" style="max-width:480px;margin-bottom:16px;">
+                        <h3>📋 明細日誌索引（首次設定）</h3>
+                        <p style="font-size:13px;color:#666;margin-bottom:14px;">首次使用「員工頁 → 品項明細」功能時，需在 Firebase 建立一次索引，之後永久有效。步驟如下：</p>
+                        <ol style="font-size:13px;color:#444;line-height:2;padding-left:18px;">
+                            <li>用 <strong>Chrome</strong> 打開員工頁</li>
+                            <li>按 <strong>F12</strong>（Mac 是 <code>Command + Option + J</code>），切到 <strong>Console</strong> 分頁</li>
+                            <li>點任意品項的「<strong>明細</strong>」按鈕</li>
+                            <li>Console 出現紅色錯誤，裡面有一個 <code>console.firebase.google.com/...</code> 連結，<strong>按住 Ctrl（Mac 是 Command）點它</strong></li>
+                            <li>Firebase 網頁打開後按「<strong>建立索引</strong>」</li>
+                            <li>等 2–3 分鐘，狀態變成 ✅ 就完成了</li>
+                        </ol>
+                        <p style="font-size:12px;color:#9aaba3;margin-top:10px;">⚠️ 如果沒有紅色錯誤出現，代表索引已經建好，不需要再做任何動作。</p>
+                    </div>
+                    <div class="settings-card" style="max-width:480px;">
+                        <h3>操作記錄管理</h3>
+                        <p style="font-size:13px;color:#666;margin-bottom:12px;">清理 6 個月前的操作記錄以釋放空間。清理後無法復原。</p>
+                        <div id="logStatsDisplay" style="font-size:13px;color:#555;margin-bottom:12px;">（點擊查詢統計）</div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn btn-outline" onclick="queryLogStats()">查詢記錄筆數</button>
+                            <button class="btn btn-outline" style="color:#c62828;border-color:#c62828;" onclick="cleanupOldLogs()">清理 6 個月前記錄</button>
+                        </div>
+                    </div>
+                    <div class="settings-card" style="max-width:480px;margin-top:16px;border:1.5px solid #c62828;">
+                        <h3 style="color:#c62828;">⚠️ 危險區域</h3>
+                        <p style="font-size:13px;color:#666;margin-bottom:14px;">清除<strong>所有品項的倉位庫存</strong>（全部歸零）並<strong>刪除所有操作記錄</strong>。適用於系統重啟或重新盤點前的初始化。<br><strong style="color:#c62828;">此操作無法復原，請謹慎使用。</strong></p>
+                        <button class="btn" style="background:#c62828;color:#fff;font-weight:700;" onclick="resetAllStock()">一鍵清除所有庫存與記錄</button>
+                    </div>
+                </div>
+
+            </div><!-- /settings-main -->
+        </div><!-- /settings-layout -->
+    </div>
+</div>
+
+<!-- Item Modal -->
+<div class="modal-overlay" id="itemModal">
+    <div class="modal">
+        <h2 id="itemModalTitle">新增品項</h2>
+        <input type="hidden" id="editItemId">
+
+        <input type="hidden" id="editPrimaryStation" value="pizzaStation">
+
+        <div class="form-section-title first">基本資料</div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>品項名稱 *</label>
+                <input type="text" id="editName" placeholder="例：豬絞肉（熟）">
+            </div>
+            <div class="form-group">
+                <label>分類 *</label>
+                <select id="editCategory">
+                    <option value="">請選擇分類...</option>
+                </select>
+                <div class="help-text">如需新增分類，請至「分類管理」頁籤</div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>越南語名稱（選填）</label>
+            <input type="text" id="editNameVi" placeholder="Tên tiếng Việt（không bắt buộc）">
+            <div class="help-text">員工切換越南語系後，庫存頁面會顯示此名稱</div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>狀態</label>
+                <select id="editActive">
+                    <option value="true">啟用</option>
+                    <option value="false">停用</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>排序</label>
+                <input type="text" inputmode="numeric" id="editSortOrder" placeholder="數字越小越前面">
+            </div>
+        </div>
+
+        <div class="form-section-title">單位與安全線</div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>顯示單位 *</label>
+                <input type="text" id="editDisplayUnit" placeholder="例：包、桶、盒、顆" oninput="refreshUnitPreview()">
+            </div>
+            <div class="form-group">
+                <label>基準單位 *</label>
+                <input type="text" id="editBaseUnit" placeholder="同顯示單位則填一樣" oninput="refreshUnitPreview()">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>換算（幾基準單位 = 1 顯示單位）</label>
+                <input type="text" inputmode="decimal" id="editBasePerDisplay" placeholder="不換算填 1" oninput="refreshUnitPreview()">
+                <div class="help-text">例：800g = 1包 → 填 800</div>
+            </div>
+            <div class="form-group">
+                <label>安全線（以顯示單位）</label>
+                <input type="text" inputmode="decimal" id="editThreshold" placeholder="例：5">
+            </div>
+        </div>
+
+        <div class="form-section-title">倉位與動線</div>
+        <div class="form-group">
+            <label>入庫至</label>
+            <select id="editReceiveLoc" onchange="onReceiveLocChange()">
+                <option value="warehouseFrozen">大倉冷凍</option>
+                <option value="warehouseChilled">大倉冷藏</option>
+                <option value="warehouseRoom">大倉常溫</option>
+            </select>
+            <div class="help-text">儲存類型（冷凍／冷藏／常溫）依此倉位自動判斷，回放倉位也會自動帶入</div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>允許備料</label>
+                <div class="toggle-group">
+                    <label><input type="checkbox" id="enableThaw" onchange="refreshThawVisibility()"> 開啟（預設關閉）</label>
+                </div>
+                <div class="help-text">開啟後員工可執行備料動作（大倉→備料區）</div>
+            </div>
+            <div class="form-group">
+                <label>備料至</label>
+                <select id="editIssueLoc" onchange="refreshConsumeLocDisplay()">
+                    <option value="onsiteChilled">解凍冷藏</option>
+                    <option value="prep">其他備貨</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>允許回放</label>
+                <div class="toggle-group">
+                    <label><input type="checkbox" id="enableReturn" onchange="refreshReturnVisibility()"> 開啟（預設關閉）</label>
+                </div>
+                <div class="help-text">開啟後員工可將備貨退回大倉</div>
+            </div>
+            <div class="form-group">
+                <label>回放至</label>
+                <select id="editReturnLoc">
+                    <option value="warehouseFrozen">大倉冷凍</option>
+                    <option value="warehouseChilled">大倉冷藏</option>
+                    <option value="warehouseRoom">大倉常溫</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>消耗從（自動判斷）</label>
+            <div id="consumeLocDisplay" style="border:1px solid #cdd7d1;border-radius:8px;padding:10px 14px;font-size:15px;background:#fafbfa;color:#333;"></div>
+            <div class="help-text">未開啟備料 → 入庫倉；開啟備料 → 備料至倉</div>
+        </div>
+
+        <div class="form-section-title">叫貨設定</div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>叫貨單位</label>
+                <input type="text" id="editProcurementUnit" placeholder="例：斤、箱（留空＝同顯示單位）" oninput="refreshUnitPreview()">
+                <div class="help-text">叫貨單上使用的單位，可與庫存單位不同</div>
+            </div>
+            <div class="form-group">
+                <label>叫貨換算（1 叫貨單位 = ? 基準單位）</label>
+                <input type="text" inputmode="decimal" id="editProcurementFactor" placeholder="例：1 箱 = 20 卷 → 填 20" oninput="refreshUnitPreview()">
+                <div class="help-text">叫貨單位＝顯示或基準單位時自動換算，不用填</div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>到貨需處理</label>
+            <div class="toggle-group">
+                <label><input type="checkbox" id="editRequiresProcessing" onchange="refreshUnitPreview()"> 開啟（預設關閉）</label>
+            </div>
+            <div class="help-text">開啟後員工簽收不直接入庫，需登記處理完成數量才入庫（需處理品項不套用叫貨換算）</div>
+        </div>
+        <div class="form-group">
+            <div id="unitPreview" style="background:#f4f8f5;border:1px solid #d8e4db;border-radius:8px;padding:10px 14px;font-size:13px;color:#3a4d40;line-height:1.7;"></div>
+        </div>
+
+        <div class="form-section-title">備註</div>
+        <div class="form-group">
+            <label>備註說明（員工可見）</label>
+            <textarea id="editNotes" rows="4" style="resize:vertical;width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #c8d5cf;border-radius:8px;font-size:14px;font-family:inherit;" placeholder="例：需煮熟後分裝 800g，晚上收拾時標示先用..."></textarea>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeItemModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveItem()">儲存品項</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="orderModal">
+    <div class="modal" style="max-width:480px;">
+        <h2>新增叫貨單</h2>
+        <div class="form-group">
+            <label>品項 *</label>
+            <select id="orderItemSel" onchange="onOrderItemChange()"></select>
+            <div class="help-text" id="orderItemHint"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>叫貨量 *</label>
+                <input type="text" inputmode="decimal" id="orderQty" placeholder="例：200">
+            </div>
+            <div class="form-group">
+                <label>叫貨單位</label>
+                <input type="text" id="orderUnit" placeholder="例：斤">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>備註（選填）</label>
+            <input type="text" id="orderNotes" placeholder="供應商、規格…">
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeOrderModal()">取消</button>
+            <button class="btn btn-outline" onclick="saveOrder(false)">先建立，稍後下單</button>
+            <button class="btn btn-primary" onclick="saveOrder(true)">建立並確認下單</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { doc, collection, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, runTransaction, getDocs, query, where, orderBy, limit as fsLimit, writeBatch, initializeFirestore, memoryLocalCache }
+        from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCUYkvADtC6tM8uENRFNUb7OJlTUcisfFE",
+        authDomain: "caishushu-inventory.firebaseapp.com",
+        projectId: "caishushu-inventory",
+        storageBucket: "caishushu-inventory.firebasestorage.app",
+        messagingSenderId: "228644978060",
+        appId: "1:228644978060:web:ac87081548d5a19305eaa9"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    // 後台使用純記憶體快取：不參與本地快取主導權仲裁，避免與前台分頁同開時互卡
+    // （後台需在有網路時使用；離線快取由前台員工頁保留）
+    const db = initializeFirestore(app, {
+        experimentalAutoDetectLongPolling: true,
+        localCache: memoryLocalCache()
+    });
+
+    const mainRef     = doc(db, "inventory", "mainStore");
+    const settingsRef = doc(db, "inventory", "settings");
+    const logsRef     = collection(db, "inventory", "mainStore", "logs");
+    const ordersRef   = collection(db, "inventory", "mainStore", "orders");
+    // 銷售回報集合。未來若接 Google Forms，Apps Script 以相同格式寫入本集合即可（source 標記來源）：
+    // { date:'YYYY-MM-DD', counts:{ [銷售品項id]: 數量 }, itemNames:{ id:名稱快照 }, ts:epoch毫秒, time:'字串', source:'app'|'gforms' }
+    const salesRef    = collection(db, "inventory", "mainStore", "sales");
+
+    const LOCATION_DEFS = {
+        warehouseFrozen:  { name: "大倉冷凍", short: "冷凍", group: "大倉" },
+        warehouseChilled: { name: "大倉冷藏", short: "冷藏", group: "大倉" },
+        warehouseRoom:    { name: "大倉常溫", short: "常溫", group: "大倉" },
+        onsiteChilled:    { name: "解凍冷藏", short: "解凍", group: "備貨" },
+        prep:             { name: "其他備貨", short: "其他", group: "備貨" },
+        pizzaStation:     { name: "比薩區",   short: "比薩", group: "使用區" },
+        chickenStation:   { name: "炸雞區",   short: "炸雞", group: "使用區" },
+    };
+    const STORAGE_PRESETS = {
+        冷凍: { receive: "warehouseFrozen",  return: "warehouseFrozen"  },
+        冷藏: { receive: "warehouseChilled", return: "warehouseChilled" },
+        常溫: { receive: "warehouseRoom",    return: "warehouseRoom"    }
+    };
+    let inventoryData        = [];
+    let categories           = [];
+    let adminPin             = "1234";
+    let countPin             = "";
+    let mainSettings         = {};
+    let categoryTranslations = {};
+    let reportPreset  = 'today';
+    let reportRows    = [];
+    let reportSort    = { col: null, dir: 1 };
+
+    // ── Helpers ─────────────────────────────────────────
+    function nn(v, fb = 0) { const n = Number(v); return Number.isFinite(n) ? n : fb; }
+    function esc(s) { return String(s ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c])); }
+
+    function normalizeItem(item, idx) {
+        const storageType    = item.storageType    || '冷凍';
+        const enableThaw     = item.enableThaw     === true;
+        const enableReturn   = item.enableReturn   === true;
+        const primaryStation = item.primaryStation || 'pizzaStation';
+        const preset = STORAGE_PRESETS[storageType] || STORAGE_PRESETS['冷凍'];
+        const basePerDisplay = nn(item.basePerDisplay, 1) || 1;
+        const thresholdDisplay = nn(item.thresholdDisplay ?? item.thresholdBase, 0);
+        const locs = {};
+        Object.keys(LOCATION_DEFS).forEach(k => { locs[k] = nn(item.locations?.[k], 0); });
+        const out = {
+            displayUnit: item.displayUnit || '個',
+            baseUnit: item.baseUnit || item.displayUnit || '個',
+            basePerDisplay,
+            thresholdDisplay,
+            thresholdBase: nn(item.thresholdBase, thresholdDisplay * basePerDisplay),
+            defaultReceiveLocation: preset.receive,
+            defaultIssueLocation:   enableThaw ? 'onsiteChilled' : preset.receive,
+            defaultReturnLocation:  preset.receive,
+            active: item.active !== false,
+            sortOrder: nn(item.sortOrder, idx),
+            ...item,
+            storageType, enableThaw, enableReturn, primaryStation,
+            locations: locs,
+        };
+        // 消耗倉一律自動推導（未開備料→入庫倉；開備料→備料倉），忽略舊資料殘留的設定
+        out.defaultConsumeLocation = enableThaw ? (out.defaultIssueLocation || 'onsiteChilled') : (out.defaultReceiveLocation || preset.receive);
+        return out;
+    }
+
+    // ── Firebase listeners ───────────────────────────────
+    function setSyncStatus(state) {
+        const el = document.getElementById('syncStatus');
+        const txt = document.getElementById('syncText');
+        if (!el || !txt) return;
+        el.classList.remove('sync-synced', 'sync-failed');
+        if (state === 'syncing') { txt.textContent = '同步中…'; }
+        else if (state === 'connecting') { el.classList.add('sync-synced'); txt.textContent = '✓ 可操作（同步中）'; }
+        else if (state === 'synced') { el.classList.add('sync-synced'); txt.textContent = '✓ 已同步'; }
+        else { el.classList.add('sync-failed'); txt.textContent = '⚠ 連線失敗'; }
+    }
+
+    onSnapshot(mainRef, { includeMetadataChanges: true }, snap => {
+        const meta = snap.metadata;
+        setSyncStatus(meta.hasPendingWrites ? 'syncing' : meta.fromCache ? 'connecting' : 'synced');
+        if (snap.exists()) {
+            const data = snap.data();
+            inventoryData = (data.items || []).map(normalizeItem);
+            mainSettings  = data.settings || {};
+            categoryTranslations = mainSettings.categoryTranslations || {};
+        } else {
+            inventoryData = [];
+            mainSettings  = {};
+            categoryTranslations = {};
+        }
+        renderItems();
+        refreshReportCategories();
+        renderCatTranslations();
+        renderLowStock();
+        renderSales();
+        renderSalesItemList();
+        const srt = document.getElementById('showReceiveToggle');
+        if (srt) srt.checked = mainSettings.showReceiveAction !== false;
+        const gse = document.getElementById('gsheetEndpointInput');
+        if (gse && document.activeElement !== gse) gse.value = mainSettings.gsheetEndpoint || '';
+        fillAnnouncementForm();
+    }, err => {
+        console.error('讀取資料失敗:', err);
+        setSyncStatus('failed');
+    });
+
+    // ── 公告設定 ─────────────────────────────────────────
+    // 資料存 mainSettings.announcement：{ enabled, text, mode:'marquee'|'static', startAt, endAt }
+    // startAt/endAt 為 datetime-local 字串（本地時間），空字串代表不限
+    function fillAnnouncementForm() {
+        const a = mainSettings.announcement || {};
+        const en = document.getElementById('annEnabled');
+        const tx = document.getElementById('annText');
+        const md = document.getElementById('annMode');
+        const st = document.getElementById('annStart');
+        const ed = document.getElementById('annEnd');
+        if (!en) return;
+        if (document.activeElement && ['annText','annStart','annEnd'].includes(document.activeElement.id)) return; // 編輯中不覆蓋
+        en.checked = a.enabled === true;
+        tx.value = a.text || '';
+        md.value = a.mode === 'static' ? 'static' : 'marquee';
+        st.value = a.startAt || '';
+        ed.value = a.endAt || '';
+        renderAnnPreview();
+    }
+
+    function renderAnnPreview() {
+        const box = document.getElementById('annPreview');
+        if (!box) return;
+        const text = document.getElementById('annText').value.trim();
+        const start = document.getElementById('annStart').value;
+        const end = document.getElementById('annEnd').value;
+        if (!text) { box.innerHTML = ''; return; }
+        const now = Date.now();
+        let statusMsg = '', color = '#2e7d32';
+        if (start && now < new Date(start).getTime()) { statusMsg = `⏳ 將於 ${start.replace('T', ' ')} 開始顯示`; color = '#8d6e00'; }
+        else if (end && now > new Date(end).getTime()) { statusMsg = `⌛ 已過下稿時間（${end.replace('T', ' ')}）`; color = '#c62828'; }
+        else if (document.getElementById('annEnabled').checked) { statusMsg = '✅ 目前顯示中'; }
+        else { statusMsg = '（未啟用）'; color = '#999'; }
+        box.innerHTML = `<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:8px 12px;font-size:13px;color:#5a4a00;">📢 ${esc(text)}</div>
+            <div style="font-size:12px;color:${color};margin-top:4px;">${esc(statusMsg)}</div>`;
+    }
+    ['annText','annStart','annEnd','annEnabled','annMode'].forEach(id => {
+        document.addEventListener('input', e => { if (e.target.id === id) renderAnnPreview(); });
+    });
+
+    window.saveAnnouncement = async function() {
+        const ann = {
+            enabled: document.getElementById('annEnabled').checked,
+            text: document.getElementById('annText').value.trim(),
+            mode: document.getElementById('annMode').value === 'static' ? 'static' : 'marquee',
+            startAt: document.getElementById('annStart').value || '',
+            endAt: document.getElementById('annEnd').value || '',
+        };
+        if (ann.enabled && !ann.text) { alert('請先輸入公告內容'); return; }
+        if (ann.startAt && ann.endAt && new Date(ann.startAt) >= new Date(ann.endAt)) { alert('下稿時間必須晚於上稿時間'); return; }
+        try {
+            await setDoc(mainRef, { settings: { ...mainSettings, announcement: ann } }, { merge: true });
+            showToast('✅ 公告已儲存');
+        } catch (e) { alert('儲存失敗：' + e.message); }
+    };
+
+    window.clearAnnouncement = async function() {
+        if (!confirm('清除公告內容並停用？')) return;
+        try {
+            await setDoc(mainRef, { settings: { ...mainSettings, announcement: { enabled: false, text: '', mode: 'marquee', startAt: '', endAt: '' } } }, { merge: true });
+            showToast('✅ 已清除並停用');
+        } catch (e) { alert('操作失敗：' + e.message); }
+    };
+
+    window.toggleShowReceive = async function(checked) {
+        try {
+            await setDoc(mainRef, { settings: { showReceiveAction: checked } }, { merge: true });
+            showToast(checked ? '✅ 前台已顯示入庫按鈕' : '✅ 前台已隱藏入庫按鈕');
+        } catch (e) { alert('設定失敗：' + e.message); }
+    };
+
+    onSnapshot(settingsRef, snap => {
+        if (snap.exists()) {
+            const data = snap.data();
+            categories = data.categories || [];
+            adminPin   = data.adminPin   || "1234";
+            countPin   = data.countPin   || "";
+        }
+        renderCategories();
+        refreshReportCategories();
+        const apDisplay = document.getElementById('adminPinDisplay');
+        if (apDisplay) apDisplay.textContent = adminPin || '––';
+        const cpDisplay = document.getElementById('countPinDisplay');
+        if (cpDisplay) cpDisplay.textContent = countPin || '（尚未設定）';
+    });
+
+    async function runItemTransaction(mutate) {
+        try {
+            await runTransaction(db, async tx => {
+                const snap = await tx.get(mainRef);
+                const data = snap.exists() ? snap.data() : { items: [] };
+                const items = (data.items || []).map(normalizeItem);
+                if (mutate(items) === false) return;
+                const { logs: _old, ...restData } = data;
+                tx.set(mainRef, { ...restData, items, lastUpdated: new Date().toISOString() });
+            });
+            showToast("✅ 已儲存");
+        } catch (e) {
+            alert("寫入失敗，請再試一次：" + e.message);
+        }
+    }
+
+    // ── PIN ──────────────────────────────────────────────
+    window.checkPin = function() {
+        const val = document.getElementById('pinInput').value;
+        if (val === adminPin) {
+            sessionStorage.setItem('adminUnlocked', '1');
+            document.getElementById('pinScreen').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+        } else {
+            document.getElementById('pinError').textContent = 'PIN 錯誤，請再試一次';
+            document.getElementById('pinInput').value = '';
+        }
+    };
+
+    window.logout = function() {
+        sessionStorage.removeItem('adminUnlocked');
+        document.getElementById('adminPanel').style.display = 'none';
+        document.getElementById('pinScreen').style.display = 'flex';
+        document.getElementById('pinInput').value = '';
+        document.getElementById('pinError').textContent = '';
+    };
+
+    document.getElementById('pinInput').addEventListener('keydown', e => { if (e.key === 'Enter') window.checkPin(); });
+
+    if (sessionStorage.getItem('adminUnlocked') === '1') {
+        document.getElementById('pinScreen').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+    }
+
+    // ── Tabs ─────────────────────────────────────────────
+    window.switchTab = function(tab) {
+        document.querySelectorAll('.tab').forEach(el =>
+            el.classList.toggle('active', el.dataset.tab === tab));
+        document.querySelectorAll('.tab-content').forEach(el =>
+            el.classList.toggle('active', el.id === 'tab-' + tab));
+    };
+
+    // ── Settings Sidebar ──────────────────────────────────
+    window.showSettingsSection = function(id) {
+        document.querySelectorAll('.settings-nav-item').forEach(el =>
+            el.classList.toggle('active', el.dataset.section === id));
+        document.querySelectorAll('.settings-section').forEach(el =>
+            el.classList.toggle('active', el.id === 'settings-' + id));
+        document.querySelector('.settings-layout')?.classList.add('showing-content');
+    };
+
+    window.settingsNavBack = function() {
+        document.querySelector('.settings-layout')?.classList.remove('showing-content');
+    };
+
+    // ── 銷售看板 ─────────────────────────────────────────
+    let salesData = [];
+    onSnapshot(query(salesRef, orderBy('ts', 'desc'), fsLimit(1000)), snap => {
+        salesData = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+        renderSales();
+    }, err => console.error('sales snapshot error', err));
+
+    function salesItems() {
+        return Array.isArray(mainSettings.salesItems) ? mainSettings.salesItems : [];
+    }
+
+    function localDateStr(d = new Date()) {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function salesByDate() {
+        const items = salesItems();
+        const byDate = {};
+        salesData.forEach(e => {
+            if (!e.date) return;
+            const b = byDate[e.date] || (byDate[e.date] = { n: 0, sums: {} });
+            b.n++;
+            items.forEach(it => { b.sums[it.id] = nn(b.sums[it.id], 0) + nn(e.counts?.[it.id], 0); });
+        });
+        return byDate;
+    }
+
+    function renderSales() {
+        const head = document.getElementById('salesHeadRow');
+        const kpi  = document.getElementById('salesKpis');
+        const body = document.getElementById('salesBody');
+        if (!head || !kpi || !body) return;
+        const items = salesItems();
+        head.innerHTML = `<th>日期</th>${items.map(it => `<th style="text-align:right;">${esc(it.name)}</th>`).join('')}<th style="text-align:right;">筆數</th>`;
+
+        const today = localDateStr();
+        const todayEntries = salesData.filter(s => s.date === today);
+        kpi.innerHTML = items.length ? items.map(it => {
+            const v = todayEntries.reduce((s, e) => s + nn(e.counts?.[it.id], 0), 0);
+            return `<div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:14px 22px;min-width:110px;">
+                <div style="font-size:12px;color:#999;">今日 ${esc(it.name)}</div>
+                <div style="font-size:26px;font-weight:800;color:#1b5e20;">${v}</div>
+            </div>`;
+        }).join('') : '<div style="color:#999;font-size:13px;">尚未設定銷售品項，請先在下方「銷售品項設定」新增。</div>';
+
+        const byDate = salesByDate();
+        const dates = Object.keys(byDate).sort().reverse().slice(0, 30);
+        const nCols = items.length + 2;
+        body.innerHTML = dates.length ? dates.map(dt => {
+            const expanded = salesExpandedDates.has(dt);
+            let html = `<tr>
+                <td>${esc(dt)}</td>
+                ${items.map(it => `<td class="num-cell">${byDate[dt].sums[it.id] || 0}</td>`).join('')}
+                <td class="num-cell"><button class="btn btn-outline btn-sm" onclick="toggleSalesDay('${esc(dt)}')">${byDate[dt].n} 筆 ${expanded ? '▴' : '▾'}</button></td>
+            </tr>`;
+            if (expanded) {
+                const entries = salesData.filter(s => s.date === dt).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+                html += `<tr><td colspan="${nCols}" style="background:#f7faf8;padding:10px 16px;">
+                    ${entries.map(s => `<div style="font-size:13px;color:#555;padding:4px 0;border-bottom:1px solid #edf2ef;">
+                        <span style="color:#999;">${esc((s.time || '').split(' ')[1] || s.time || '')}</span>
+                        ${items.map(it => `${esc(it.name)} <strong>${nn(s.counts?.[it.id], 0)}</strong>`).join('｜')}
+                        ${s.source && s.source !== 'app' ? ` <span class="badge" style="background:#eee;color:#777;font-size:11px;">${esc(s.source)}</span>` : ''}
+                    </div>`).join('')}
+                </td></tr>`;
+            }
+            return html;
+        }).join('') : `<tr><td colspan="${nCols}" style="text-align:center;color:#999;padding:20px;">尚無銷售回報</td></tr>`;
+    }
+
+    let salesExpandedDates = new Set();
+    window.toggleSalesDay = function(dt) {
+        if (salesExpandedDates.has(dt)) salesExpandedDates.delete(dt);
+        else salesExpandedDates.add(dt);
+        renderSales();
+    };
+
+    function renderSalesItemList() {
+        const el = document.getElementById('salesItemList');
+        if (!el) return;
+        const items = salesItems();
+        el.innerHTML = items.length ? items.map(it => `
+            <div class="card-item"><span>${esc(it.name)}</span>
+                <div style="display:flex;gap:6px;">
+                    <button class="btn btn-outline btn-sm" onclick="renameSalesItem('${it.id}')">改名</button>
+                    <button class="btn btn-danger btn-sm" onclick="delSalesItem('${it.id}')">刪除</button>
+                </div>
+            </div>`).join('') : '<div class="card-item" style="color:#999;">尚無銷售品項，請在下方新增（例：9吋厚、12吋薄）</div>';
+    }
+
+    async function saveSalesItems(items) {
+        await setDoc(mainRef, { settings: { salesItems: items } }, { merge: true });
+    }
+
+    window.addSalesItem = async function() {
+        const inp = document.getElementById('newSalesItemInput');
+        const name = inp.value.trim();
+        if (!name) return;
+        const items = salesItems();
+        if (items.some(i => i.name === name)) { alert('已有同名銷售品項'); return; }
+        try {
+            await saveSalesItems([...items, { id: 's' + Date.now(), name }]);
+            inp.value = '';
+            showToast('✅ 已新增');
+        } catch (e) { alert('儲存失敗：' + e.message); }
+    };
+
+    window.renameSalesItem = async function(id) {
+        const items = salesItems();
+        const it = items.find(i => i.id === id);
+        if (!it) return;
+        const name = prompt('新名稱', it.name);
+        if (name === null) return;
+        const nm = name.trim();
+        if (!nm) return;
+        try {
+            await saveSalesItems(items.map(i => i.id === id ? { ...i, name: nm } : i));
+            showToast('✅ 已更新');
+        } catch (e) { alert('儲存失敗：' + e.message); }
+    };
+
+    window.delSalesItem = async function(id) {
+        const items = salesItems();
+        const it = items.find(i => i.id === id);
+        if (!it) return;
+        if (!confirm(`刪除銷售品項「${it.name}」？\n\n歷史回報資料保留，但看板將不再顯示此欄。`)) return;
+        try {
+            await saveSalesItems(items.filter(i => i.id !== id));
+            showToast('✅ 已刪除');
+        } catch (e) { alert('儲存失敗：' + e.message); }
+    };
+
+    window.toggleSalesSetup = function() {
+        const p = document.getElementById('salesSetupPanel');
+        p.style.display = p.style.display === 'none' ? 'block' : 'none';
+    };
+
+    window.saveGsheetEndpoint = async function() {
+        const v = document.getElementById('gsheetEndpointInput').value.trim();
+        try {
+            await setDoc(mainRef, { settings: { gsheetEndpoint: v } }, { merge: true });
+            showToast(v ? '✅ 已儲存端點' : '✅ 已清除端點');
+        } catch (e) { alert('儲存失敗：' + e.message); }
+    };
+
+    // 匯出到 Google Sheet：POST 到業主設定的 Apps Script 端點（設定步驟見「Google Sheet 匯出設定.md」）
+    window.exportSalesToSheet = async function() {
+        const url = (mainSettings.gsheetEndpoint || '').trim();
+        if (!url) {
+            alert('尚未設定 Google Sheet 匯出端點。\n\n請點「品項設定」，在最下方貼上 Apps Script 網路應用程式網址並儲存（設定步驟見專案內「Google Sheet 匯出設定.md」）。');
+            return;
+        }
+        const items = salesItems();
+        if (!salesData.length || !items.length) { showToast('尚無銷售資料可匯出'); return; }
+        const byDate = salesByDate();
+        const dates = Object.keys(byDate).sort().reverse();
+        const payload = {
+            type: 'salesSummary',
+            exportedAt: new Date().toLocaleString('zh-TW', { hour12: false }),
+            header: ['日期', ...items.map(it => it.name), '筆數'],
+            rows: dates.map(dt => [dt, ...items.map(it => byDate[dt].sums[it.id] || 0), byDate[dt].n]),
+        };
+        try {
+            await fetch(url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
+            showToast('✅ 已送出，請開 Google 試算表確認');
+        } catch (e) { alert('送出失敗：' + e.message); }
+    };
+
+    window.exportSalesXlsx = function() {
+        const items = salesItems();
+        if (!salesData.length || !items.length) { showToast('尚無銷售資料可匯出'); return; }
+        const byDate = salesByDate();
+        const dates = Object.keys(byDate).sort().reverse();
+        const header = ['日期', ...items.map(it => it.name), '筆數'];
+        const data = [header, ...dates.map(dt => [dt, ...items.map(it => byDate[dt].sums[it.id] || 0), byDate[dt].n])];
+        const ws = window.XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = header.map((h, i) => ({ wch: i === 0 ? 12 : 10 }));
+        const wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, ws, '銷售統計');
+        window.XLSX.writeFile(wb, `銷售統計_${new Date().toISOString().split('T')[0]}.xlsx`);
+    };
+
+    // ── 叫貨 ─────────────────────────────────────────────
+    let ordersData = [];
+    onSnapshot(query(ordersRef, orderBy('createdAt', 'desc')), snap => {
+        ordersData = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+        renderOrders();
+        renderLowStock();
+    }, err => console.error('orders snapshot error', err));
+
+    const ORDER_STATUS = {
+        pending:    { name: '待下單',       color: '#757575', bg: '#f5f5f5' },
+        ordered:    { name: '已下單，待簽收', color: '#1565c0', bg: '#e3f2fd' },
+        partial:    { name: '部分到貨，待補送', color: '#8d6e00', bg: '#fff8e1' },
+        over:       { name: '溢收，待結案',    color: '#ad1457', bg: '#fce4ec' },
+        processing: { name: '已簽收，處理中', color: '#e65100', bg: '#fff3e0' },
+        done:       { name: '完成',         color: '#2e7d32', bg: '#e8f5e9' },
+    };
+
+    function fmtOrderTime(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        if (isNaN(d)) return '—';
+        return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function fmtDisp(base, bpd) {
+        const disp = base / (bpd || 1);
+        return Math.abs(disp - Math.round(disp)) < 0.005 ? String(Math.round(disp)) : disp.toFixed(1);
+    }
+
+    function orderStatusBadge(status) {
+        const s = ORDER_STATUS[status] || ORDER_STATUS.pending;
+        return `<span class="badge" style="background:${s.bg};color:${s.color};">${s.name}</span>`;
+    }
+
+    function orderTrack(o) {
+        if (!o.requiresProcessing && nn(o.factorBase, 0) > 0) {
+            return {
+                factor: nn(o.factorBase),
+                unit: o.baseUnit || '',
+                total: Math.round(o.orderQty * nn(o.factorBase) * 100) / 100,
+            };
+        }
+        const factor = (!o.requiresProcessing && nn(o.procFactor, 0) > 0) ? nn(o.procFactor) : 0;
+        return {
+            factor,
+            unit: factor ? (o.stockUnit || '') : (o.orderUnit || ''),
+            total: factor ? Math.round(o.orderQty * factor * 100) / 100 : nn(o.orderQty),
+        };
+    }
+
+    let doneShowLimit = 30;
+
+    function renderOrders() {
+        const activeBody = document.getElementById('ordersActiveBody');
+        const doneBody   = document.getElementById('ordersDoneBody');
+        if (!activeBody || !doneBody) return;
+        const active  = ordersData.filter(o => o.status !== 'done');
+        const doneAll = ordersData.filter(o => o.status === 'done');
+        const done    = doneAll.slice(0, doneShowLimit);
+
+        activeBody.innerHTML = active.length ? active.map(o => {
+            const actions = [];
+            if (o.status === 'pending') actions.push(`<button class="btn btn-primary btn-sm" onclick="confirmOrder('${o.docId}')">確認下單</button>`);
+            if (o.status === 'pending' || o.status === 'ordered') actions.push(`<button class="btn btn-danger btn-sm" onclick="deleteOrder('${o.docId}')">取消</button>`);
+            if (o.status === 'partial' || o.status === 'over') actions.push(`<button class="btn btn-outline btn-sm" onclick="closeOrderShort('${o.docId}')">結案</button>`);
+            const received = nn(o.receiveQty, 0);
+            const tk = orderTrack(o);
+            const orderText = `${nn(o.orderQty)} ${esc(o.orderUnit || '')}${tk.factor ? `（= ${tk.total} ${esc(tk.unit)}）` : ''}`;
+            const qtyText = `${orderText}<div style="font-size:12px;color:#666;">簽收 ${received > 0 ? `${received} / ${tk.total} ${esc(tk.unit)}` : '—'}</div>`;
+            const diffInfo = (o.diffLog || []).length
+                ? `<div style="font-size:12px;color:#ad6800;margin-top:2px;">${o.diffLog.map(esc).join('<br>')}</div>` : '';
+            return `<tr>
+                <td><strong>${esc(o.itemName)}</strong></td>
+                <td>${qtyText}</td>
+                <td>${orderStatusBadge(o.status)}${o.requiresProcessing ? ' <span class="badge" style="background:#fce4ec;color:#ad1457;">需處理</span>' : ''}</td>
+                <td>${fmtOrderTime(o.createdAt)}</td>
+                <td style="font-size:13px;color:#666;">${esc(o.notes || '')}${diffInfo}</td>
+                <td><div class="action-cell">${actions.join('')}</div></td>
+            </tr>`;
+        }).join('') : `<tr><td colspan="6" style="text-align:center;color:#999;padding:20px;">目前沒有進行中的叫貨單</td></tr>`;
+
+        doneBody.innerHTML = done.length ? done.map(o => {
+            const item = inventoryData.find(i => String(i.id) === String(o.itemId));
+            const tk = orderTrack(o);
+            // v2 訂單（factorBase）的入庫量以基準單位記錄；舊訂單以顯示單位
+            const stockInUnit = nn(o.factorBase, 0) > 0 ? (o.baseUnit || '') : (item?.displayUnit || '');
+            const orderText = `${nn(o.orderQty)} ${esc(o.orderUnit || '')}${tk.factor ? `（= ${tk.total} ${esc(tk.unit)}）` : ''}`;
+            const qtyText = `${orderText}<div style="font-size:12px;color:#666;">簽收 ${o.receiveQty != null ? `${nn(o.receiveQty)} ${esc(tk.unit)}` : '—'}</div>`;
+            const stockIn = o.processedQty != null ? `${nn(o.processedQty)} ${esc(stockInUnit)}` : '—';
+            const statusBadge = o.closedShort ? '<span class="badge" style="background:#fff8e1;color:#8d6e00;">短交結案</span>'
+                              : o.closedOver ? '<span class="badge" style="background:#fce4ec;color:#ad1457;">溢收結案</span>'
+                              : '<span class="badge" style="background:#e8f5e9;color:#2e7d32;">完成</span>';
+            const diffInfo = (o.diffLog || []).length
+                ? `<div style="font-size:12px;color:#ad6800;margin-top:2px;">${o.diffLog.map(esc).join('<br>')}</div>` : '';
+            return `<tr>
+                <td>${esc(o.itemName)}</td>
+                <td>${qtyText}</td>
+                <td>${stockIn}</td>
+                <td>${statusBadge}</td>
+                <td>${fmtOrderTime(o.doneAt)}</td>
+                <td style="font-size:13px;color:#666;">${esc(o.notes || '')}${diffInfo}</td>
+                <td><div class="action-cell"><button class="btn btn-outline btn-sm" onclick="deleteOrder('${o.docId}')">刪除</button></div></td>
+            </tr>`;
+        }).join('') : `<tr><td colspan="7" style="text-align:center;color:#999;padding:20px;">還沒有完成的叫貨單</td></tr>`;
+
+        if (doneAll.length > done.length) {
+            doneBody.innerHTML += `<tr><td colspan="7" style="text-align:center;padding:10px;">
+                <button class="btn btn-outline btn-sm" onclick="loadMoreDone()">載入更多（已顯示 ${done.length} / 共 ${doneAll.length} 筆）</button>
+            </td></tr>`;
+        }
+    }
+
+    window.loadMoreDone = function() {
+        doneShowLimit += 30;
+        renderOrders();
+    };
+
+    window.exportDoneOrdersXlsx = function() {
+        const doneAll = ordersData.filter(o => o.status === 'done');
+        if (!doneAll.length) { showToast('沒有已完成的叫貨紀錄'); return; }
+        const fmtT = iso => iso ? new Date(iso).toLocaleString('zh-TW', { hour12: false }) : '';
+        const rows = doneAll.map(o => {
+            const tk = orderTrack(o);
+            const item = inventoryData.find(i => String(i.id) === String(o.itemId));
+            const stockInUnit = nn(o.factorBase, 0) > 0 ? (o.baseUnit || '') : (item?.displayUnit || '');
+            return {
+                '品項': o.itemName,
+                '叫貨量': nn(o.orderQty),
+                '叫貨單位': o.orderUnit || '',
+                '簽收': o.receiveQty != null ? nn(o.receiveQty) : '',
+                '簽收單位': o.receiveQty != null ? tk.unit : '',
+                '入庫': o.processedQty != null ? nn(o.processedQty) : '',
+                '入庫單位': o.processedQty != null ? stockInUnit : '',
+                '狀態': o.closedShort ? '短交結案' : o.closedOver ? '溢收結案' : '完成',
+                '建立時間': fmtT(o.createdAt),
+                '完成時間': fmtT(o.doneAt),
+                '備註': o.notes || '',
+                '差異記錄': (o.diffLog || []).join('；'),
+            };
+        });
+        const ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [{ wch: 18 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 30 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '叫貨紀錄');
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        XLSX.writeFile(wb, `叫貨紀錄_${date}.xlsx`);
+        showToast(`✅ 已匯出 ${rows.length} 筆紀錄`);
+    };
+
+    window.clearDoneOrders = async function() {
+        const doneAll = ordersData.filter(o => o.status === 'done');
+        if (!doneAll.length) { showToast('沒有已完成的紀錄可清除'); return; }
+        if (!confirm(`確定要清除全部 ${doneAll.length} 筆已完成的叫貨紀錄嗎？\n\n進行中的叫貨單不受影響。此操作無法復原，建議先匯出 Excel 備份。`)) return;
+        if (!confirm('再次確認：確定清除所有已完成叫貨紀錄？')) return;
+        try {
+            let batch = writeBatch(db);
+            let count = 0;
+            for (const o of doneAll) {
+                batch.delete(doc(ordersRef, o.docId));
+                if (++count % 500 === 0) { await batch.commit(); batch = writeBatch(db); }
+            }
+            if (count % 500 !== 0) await batch.commit();
+            doneShowLimit = 30;
+            showToast(`✅ 已清除 ${count} 筆紀錄`);
+        } catch (e) { alert('清除失敗：' + e.message); }
+    };
+
+    function renderLowStock() {
+        const panel = document.getElementById('lowStockPanel');
+        const list  = document.getElementById('lowStockList');
+        if (!panel || !list) return;
+        const activeOrderItemIds = new Set(ordersData.filter(o => o.status !== 'done').map(o => String(o.itemId)));
+        const lows = inventoryData.filter(it =>
+            it.active !== false &&
+            nn(it.thresholdBase) > 0 &&
+            effectiveStock(it) < nn(it.thresholdBase) &&
+            !activeOrderItemIds.has(String(it.id))
+        );
+        if (!lows.length) { panel.style.display = 'none'; return; }
+        panel.style.display = 'block';
+        list.innerHTML = lows.map(it => `
+            <div style="display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #ffe082;border-radius:20px;padding:5px 6px 5px 14px;font-size:13px;">
+                <span><strong>${esc(it.name)}</strong> 剩 ${fmtDisp(effectiveStock(it), it.basePerDisplay)} ${esc(it.displayUnit)}</span>
+                <button class="btn btn-primary btn-sm" style="border-radius:14px;" onclick="openOrderEditor('${String(it.id)}')">＋叫貨</button>
+            </div>`).join('');
+    }
+
+    window.openOrderEditor = function(itemId = null) {
+        const sel = document.getElementById('orderItemSel');
+        const activeOrderItemIds = new Set(ordersData.filter(o => o.status !== 'done').map(o => String(o.itemId)));
+        const items = inventoryData.filter(it => it.active !== false).slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+        const lows = [], others = [];
+        items.forEach(it => {
+            const isLow = nn(it.thresholdBase) > 0 && effectiveStock(it) < nn(it.thresholdBase);
+            (isLow ? lows : others).push(it);
+        });
+        const opt = it => `<option value="${String(it.id)}">${esc(it.name)}${activeOrderItemIds.has(String(it.id)) ? '（已有進行中訂單）' : ''}</option>`;
+        sel.innerHTML = '<option value="">請選擇品項...</option>'
+            + (lows.length ? `<optgroup label="⚠️ 低庫存">${lows.map(opt).join('')}</optgroup>` : '')
+            + `<optgroup label="全部品項">${others.map(opt).join('')}</optgroup>`;
+        sel.value = itemId != null ? String(itemId) : '';
+        document.getElementById('orderQty').value   = '';
+        document.getElementById('orderNotes').value = '';
+        document.getElementById('orderUnit').value  = '';
+        onOrderItemChange();
+        document.getElementById('orderModal').classList.add('open');
+    };
+
+    window.onOrderItemChange = function() {
+        const sel  = document.getElementById('orderItemSel');
+        const hint = document.getElementById('orderItemHint');
+        const item = inventoryData.find(i => String(i.id) === sel.value);
+        if (!item) { hint.textContent = ''; return; }
+        document.getElementById('orderUnit').value = item.procurementUnit || item.displayUnit || '';
+        const bpdI = nn(item.basePerDisplay, 1) || 1;
+        const baseU = item.baseUnit || item.displayUnit || '';
+        const fB = item.requiresProcessing ? 0 : resolveFactorBase(item.procurementUnit, nn(item.procurementFactor, 0), item.displayUnit, baseU, bpdI);
+        hint.textContent = `目前有效庫存 ${fmtDisp(effectiveStock(item), item.basePerDisplay)} ${item.displayUnit}｜安全線 ${item.thresholdDisplay || 0} ${item.displayUnit}`
+            + (item.requiresProcessing ? '｜此品項到貨需處理後才入庫'
+               : fB > 0 ? `｜換算：1 ${item.procurementUnit || item.displayUnit} = ${fB} ${baseU}`
+               : `｜⚠️ 叫貨單位無法自動換算，請至品項設定填「叫貨換算」`);
+    };
+
+    window.closeOrderModal = function() {
+        document.getElementById('orderModal').classList.remove('open');
+    };
+
+    window.saveOrder = async function(confirmNow) {
+        const sel   = document.getElementById('orderItemSel');
+        const item  = inventoryData.find(i => String(i.id) === sel.value);
+        const qty   = nn(document.getElementById('orderQty').value, 0);
+        const unit  = document.getElementById('orderUnit').value.trim();
+        const notes = document.getElementById('orderNotes').value.trim();
+        if (!item)    { alert('請選擇品項'); return; }
+        if (qty <= 0) { alert('請輸入叫貨量'); return; }
+        const now = new Date().toISOString();
+        try {
+            const bpdS = nn(item.basePerDisplay, 1) || 1;
+            const baseUnitS = item.baseUnit || item.displayUnit || '';
+            const orderUnitS = unit || item.procurementUnit || item.displayUnit || '';
+            const factorBaseS = item.requiresProcessing ? 0 : resolveFactorBase(orderUnitS, nn(item.procurementFactor, 0), item.displayUnit, baseUnitS, bpdS);
+            await addDoc(ordersRef, {
+                itemId: item.id, itemName: item.name,
+                status: confirmNow ? 'ordered' : 'pending',
+                orderQty: qty,
+                orderUnit: orderUnitS,
+                factorBase: factorBaseS > 0 ? factorBaseS : null,
+                baseUnit: baseUnitS,
+                stockUnit: item.displayUnit || '',
+                requiresProcessing: item.requiresProcessing === true,
+                notes,
+                createdAt: now,
+                orderedAt: confirmNow ? now : null,
+                receivedAt: null, doneAt: null,
+                receiveQty: null, processedQty: null,
+            });
+            closeOrderModal();
+            showToast(confirmNow ? '✅ 已建立並確認下單' : '✅ 已建立叫貨單（待下單）');
+        } catch (e) { alert('建立失敗：' + e.message); }
+    };
+
+    window.confirmOrder = async function(docId) {
+        try {
+            await updateDoc(doc(ordersRef, docId), { status: 'ordered', orderedAt: new Date().toISOString() });
+            showToast('✅ 已確認下單，等待員工簽收');
+        } catch (e) { alert('操作失敗：' + e.message); }
+    };
+
+    window.closeOrderShort = async function(docId) {
+        const o = ordersData.find(x => x.docId === docId);
+        if (!o) return;
+        const received = nn(o.receiveQty, 0);
+        const tk = orderTrack(o);
+        const over = received > tk.total + 0.001;
+        const msg = over
+            ? `結案「${o.itemName}」的叫貨單？\n\n已收 ${received} / ${tk.total} ${tk.unit}（超收 ${Math.round((received - tk.total) * 100) / 100} ${tk.unit}），確認後此單完成。`
+            : `結案「${o.itemName}」的叫貨單？\n\n已收 ${received} / ${tk.total} ${tk.unit}，剩餘數量將不再等待補送。`;
+        if (!confirm(msg)) return;
+        try {
+            await updateDoc(doc(ordersRef, docId), { status: 'done', ...(over ? { closedOver: true } : { closedShort: true }), doneAt: new Date().toISOString() });
+            showToast('✅ 已結案');
+        } catch (e) { alert('操作失敗：' + e.message); }
+    };
+
+    window.deleteOrder = async function(docId) {
+        const o = ordersData.find(x => x.docId === docId);
+        const verb = o && o.status === 'done' ? '刪除' : '取消';
+        if (!confirm(`確定要${verb}「${o?.itemName || ''}」的叫貨單嗎？`)) return;
+        try {
+            await deleteDoc(doc(ordersRef, docId));
+            showToast(`✅ 已${verb}`);
+        } catch (e) { alert('操作失敗：' + e.message); }
+    };
+
+    // ── Item table ────────────────────────────────────────
+    window.onItemSearch = (() => { let tm; return () => { clearTimeout(tm); tm = setTimeout(renderItems, 150); }; })();
+
+    function renderItems() {
+        const q = (document.getElementById('itemSearchInput')?.value || '').trim().toLowerCase();
+        const sorted = [...inventoryData]
+            .filter(item => !q || [item.name, item.nameVi || '', item.category, item.displayUnit, item.baseUnit].join(' ').toLowerCase().includes(q))
+            .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+        document.getElementById('itemsBody').innerHTML = sorted.length
+            ? sorted.map(item => `
+                <tr class="${item.active === false ? 'inactive-row' : ''}">
+                    <td>${esc(item.sortOrder)}</td>
+                    <td><strong>${esc(item.name)}</strong><br><small style="color:#999;">${esc(item.category)}</small></td>
+                    <td style="font-size:13px;">${esc(item.basePerDisplay)} ${esc(item.baseUnit)} = 1 ${esc(item.displayUnit)}</td>
+                    <td>${(() => {
+                        const stock = effectiveStock(item);
+                        const low = item.active !== false && nn(item.thresholdBase) > 0 && stock < nn(item.thresholdBase);
+                        return `<span style="font-weight:600;${low ? 'color:#c62828;' : ''}">${fmtDisp(stock, item.basePerDisplay)} ${esc(item.displayUnit)}${low ? ' ⚠️' : ''}</span>`;
+                    })()}</td>
+                    <td>${esc(item.thresholdDisplay)} ${esc(item.displayUnit)}</td>
+                    <td style="font-size:13px;white-space:nowrap;">${(() => {
+                        const recv = LOCATION_DEFS[item.defaultReceiveLocation]?.name || '—';
+                        const cons = LOCATION_DEFS[item.enableThaw ? item.defaultIssueLocation : item.defaultReceiveLocation]?.name || '—';
+                        return esc(recv === cons ? recv : `${recv}／${cons}`);
+                    })()}</td>
+                    <td><span class="badge ${item.active === false ? 'badge-off' : 'badge-on'}">${item.active === false ? '停用' : '啟用'}</span></td>
+                    <td>
+                        <div class="action-cell">
+                            <button class="btn btn-primary btn-sm" onclick="openItemEditor(${esc(item.id)})">編輯</button>
+                            <button class="btn btn-outline btn-sm" onclick="toggleActive(${esc(item.id)})">${item.active === false ? '啟用' : '停用'}</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteItem(${esc(item.id)})">刪除</button>
+                        </div>
+                    </td>
+                </tr>`).join('')
+            : '<tr><td colspan="8" style="text-align:center;color:#999;padding:20px;">尚無品項資料</td></tr>';
+    }
+
+    // ── Categories ────────────────────────────────────────
+    function renderCategories() {
+        const el = document.getElementById('categoryList');
+        if (!el) return;
+        el.innerHTML = categories.length
+            ? categories.map(cat => `
+                <div class="card-item">
+                    <span>${esc(cat)}</span>
+                    <button class="btn btn-outline btn-sm" onclick="removeCategory('${esc(cat)}')">移除</button>
+                </div>`).join('')
+            : '<div class="card-item" style="color:#999;">尚無分類</div>';
+
+        const catSel = document.getElementById('editCategory');
+        if (catSel) {
+            const cur = catSel.value;
+            catSel.innerHTML = '<option value="">請選擇分類...</option>' +
+                categories.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+            if (cur) catSel.value = cur;
+        }
+        renderCatTranslations();
+    }
+
+    window.addCategory = function() {
+        const input = document.getElementById('newCatInput');
+        const val = input.value.trim();
+        if (!val) return;
+        if (categories.includes(val)) { showToast('分類已存在'); return; }
+        setDoc(settingsRef, { categories: [...categories, val], adminPin }, { merge: true })
+            .then(() => { input.value = ''; showToast('✅ 已新增分類'); })
+            .catch(e => alert('儲存失敗：' + e.message));
+    };
+
+    window.removeCategory = function(cat) {
+        if (inventoryData.some(i => i.category === cat)) {
+            alert(`「${cat}」仍有品項使用，請先調整品項分類再移除。`);
+            return;
+        }
+        if (!confirm(`確定移除分類「${cat}」？`)) return;
+        setDoc(settingsRef, { categories: categories.filter(c => c !== cat), adminPin }, { merge: true })
+            .then(() => showToast('✅ 已移除分類'))
+            .catch(e => alert('儲存失敗：' + e.message));
+    };
+
+    // ── Category Translations ─────────────────────────────
+    function renderCatTranslations() {
+        const container = document.getElementById('catTransContainer');
+        if (!container) return;
+        if (!categories.length) {
+            container.innerHTML = '<p style="color:#999;font-size:13px;">尚無分類，請先在上方新增分類。</p>';
+            return;
+        }
+        container.innerHTML = categories.map(cat => `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                <span style="min-width:90px;font-size:14px;color:#333;">${esc(cat)}</span>
+                <span style="color:#bbb;font-size:13px;">→</span>
+                <input type="text" class="cat-trans-input" data-cat="${esc(cat)}"
+                    placeholder="Tiếng Việt（不填則原樣顯示）"
+                    value="${esc(categoryTranslations[cat] || '')}"
+                    style="flex:1;padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;font-family:inherit;">
+            </div>`).join('');
+    }
+
+    window.saveCatTranslations = async function() {
+        const inputs = document.querySelectorAll('.cat-trans-input');
+        const map = {};
+        inputs.forEach(input => {
+            const cat = input.dataset.cat;
+            const val = input.value.trim();
+            if (val) map[cat] = val;
+        });
+        try {
+            await setDoc(mainRef, { settings: { ...mainSettings, categoryTranslations: map } }, { merge: true });
+            showToast('✅ 翻譯已儲存');
+        } catch (e) {
+            alert('儲存失敗：' + e.message);
+        }
+    };
+
+    // ── VI Batch Translation ──────────────────────────────
+    window.genViPrompt = function() {
+        const items = [...inventoryData]
+            .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+            .filter(i => !i.nameVi);
+        const cats = categories.filter(cat => !categoryTranslations[cat]);
+        if (!items.length && !cats.length) {
+            showToast('所有品項及分類都已有越南語翻譯');
+            document.getElementById('viPromptArea').style.display = 'none';
+            return;
+        }
+        const list = [
+            ...cats.map(cat => ({ type: "category", name: cat })),
+            ...items.map(i => ({ type: "item", id: i.id, name: i.name }))
+        ];
+        const prompt =
+`請將以下餐廳食材／物品名稱及分類名稱翻譯成越南文。
+直接回傳 JSON 陣列，不要加任何說明或 markdown：
+
+${JSON.stringify(list, null, 2)}
+
+回傳格式範例：
+[
+  {"type": "category", "name": "肉類", "nameVi": "Thịt"},
+  {"type": "item", "id": 1, "name": "牛肉", "nameVi": "Thịt bò"}
+]`;
+        document.getElementById('viPromptText').value = prompt;
+        document.getElementById('viPromptArea').style.display = 'block';
+        document.getElementById('viImportArea').style.display = 'none';
+    };
+
+    window.copyViPrompt = function() {
+        const el = document.getElementById('viPromptText');
+        el.select();
+        navigator.clipboard?.writeText(el.value).then(() => showToast('✅ 已複製'))
+            .catch(() => { document.execCommand('copy'); showToast('✅ 已複製'); });
+    };
+
+    window.showViImport = function() {
+        document.getElementById('viImportArea').style.display = 'block';
+        document.getElementById('viPromptArea').style.display = 'none';
+        document.getElementById('viImportMsg').textContent = '';
+        document.getElementById('viImportText').value = '';
+    };
+
+    window.importViTranslations = async function() {
+        const raw = document.getElementById('viImportText').value.trim();
+        const msgEl = document.getElementById('viImportMsg');
+        let parsed;
+        try {
+            parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) throw new Error('格式錯誤');
+        } catch {
+            msgEl.style.color = '#c62828';
+            msgEl.textContent = '⚠️ JSON 格式錯誤，請確認 Gemini 回傳的內容完整。';
+            return;
+        }
+        // Support both new format (type field) and legacy format (id only = item)
+        const itemUpdates = parsed.filter(r => r.nameVi?.trim() && (r.type === 'item' || (!r.type && r.id)));
+        const catUpdates  = parsed.filter(r => r.nameVi?.trim() && r.type === 'category' && r.name);
+        if (!itemUpdates.length && !catUpdates.length) {
+            msgEl.style.color = '#c62828';
+            msgEl.textContent = '⚠️ 找不到有效的翻譯資料（需要 nameVi 欄位）。';
+            return;
+        }
+        const confirmMsg = [
+            itemUpdates.length ? `${itemUpdates.length} 筆品項` : '',
+            catUpdates.length  ? `${catUpdates.length} 筆分類`  : ''
+        ].filter(Boolean).join('、');
+        if (!confirm(`確定匯入 ${confirmMsg}翻譯？`)) return;
+        try {
+            let itemCount = 0;
+            if (itemUpdates.length) {
+                await runItemTransaction(items => {
+                    itemUpdates.forEach(r => {
+                        const item = items.find(i => String(i.id) === String(r.id));
+                        if (item) { item.nameVi = r.nameVi.trim(); itemCount++; }
+                    });
+                    if (!itemCount) return false;
+                });
+            }
+            let catCount = 0;
+            if (catUpdates.length) {
+                const updatedMap = { ...categoryTranslations };
+                catUpdates.forEach(r => { updatedMap[r.name] = r.nameVi.trim(); catCount++; });
+                await setDoc(mainRef, { settings: { ...mainSettings, categoryTranslations: updatedMap } }, { merge: true });
+            }
+            const resultMsg = [
+                itemCount ? `${itemCount} 筆品項` : '',
+                catCount  ? `${catCount} 筆分類`  : ''
+            ].filter(Boolean).join('、');
+            msgEl.style.color = '#2e7d32';
+            msgEl.textContent = `✅ 已匯入 ${resultMsg}翻譯。`;
+            document.getElementById('viImportText').value = '';
+        } catch (e) {
+            msgEl.style.color = '#c62828';
+            msgEl.textContent = '⚠️ 儲存失敗：' + e.message;
+        }
+    };
+
+    // ── Batch Import ──────────────────────────────────────
+    const BATCH_GEMINI_PROMPT =
+`請將以下 Excel / Numbers 表格轉換成 JSON 陣列。
+欄位對應如下：
+品項名稱 → name（必填）
+分類 → category（必填）
+顯示單位 → displayUnit（必填）
+基準單位 → baseUnit（若空白，不輸出此欄）
+換算數量 → basePerDisplay（數字，若空白或為 1，不輸出此欄）
+庫存類型 → storageType（若空白，不輸出此欄）
+安全庫存 → thresholdDisplay（數字，若空白，不輸出此欄）
+備註 → notes（若空白，不輸出此欄）
+越南語名稱 → nameVi（若空白，不輸出此欄）
+
+規則：
+- 直接回傳 JSON 陣列，不要加說明或 markdown 標記
+- 數字欄位（換算數量、安全庫存）輸出為數字，不是字串
+- 忽略標題列及備註欄寫有「示範」字樣的列
+
+（請在此貼上 Excel / Numbers 複製的表格內容）`;
+
+    (function initBatchCard() {
+        const el = document.getElementById('batchPromptText');
+        if (el) el.value = BATCH_GEMINI_PROMPT;
+    })();
+
+    window.downloadBatchTemplate = function() {
+        const bom = '﻿';
+        const header = '品項名稱（必填）,分類（必填）,顯示單位（必填）,基準單位,換算數量,庫存類型,安全庫存,備註,越南語名稱';
+        const sample = '牛肉片（示範請刪除）,肉類,包,g,500,冷凍,2,,Thịt bò';
+        const csv = bom + header + '\n' + sample + '\n';
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '品項批次匯入範本.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    window.copyBatchPrompt = function() {
+        const el = document.getElementById('batchPromptText');
+        if (!el) return;
+        el.select();
+        navigator.clipboard?.writeText(el.value)
+            .then(() => showToast('✅ 已複製提示詞'))
+            .catch(() => { document.execCommand('copy'); showToast('✅ 已複製提示詞'); });
+    };
+
+    let batchImportReady = [];
+
+    window.loadBatchImportFile = function(input) {
+        const file = input.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            document.getElementById('batchImportText').value = String(reader.result || '').trim();
+            input.value = '';
+            previewBatchImport();
+        };
+        reader.onerror = () => alert('讀取檔案失敗，請再試一次');
+        reader.readAsText(file, 'utf-8');
+    };
+
+    window.previewBatchImport = function() {
+        const raw = document.getElementById('batchImportText').value.trim();
+        const previewEl = document.getElementById('batchImportPreview');
+        const confirmBtn = document.getElementById('confirmImportBtn');
+        const cancelBtn = document.getElementById('cancelImportBtn');
+        batchImportReady = [];
+
+        let parsed;
+        try {
+            parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) throw new Error();
+        } catch {
+            previewEl.innerHTML = '<p style="color:#c62828;font-size:13px;">⚠️ JSON 格式錯誤，請確認內容。</p>';
+            confirmBtn.style.display = 'none'; cancelBtn.style.display = 'none';
+            return;
+        }
+
+        const existingNames = new Set(inventoryData.map(i => i.name));
+        const rows = parsed.map(r => {
+            if (!r.name || !r.category || !r.displayUnit) {
+                return { ...r, _status: 'error', _msg: '缺少必填欄位' };
+            }
+            if (existingNames.has(r.name)) {
+                return { ...r, _status: 'skip', _msg: '同名已存在' };
+            }
+            batchImportReady.push(r);
+            return { ...r, _status: 'ok' };
+        });
+
+        const toImport = rows.filter(r => r._status === 'ok').length;
+        const colors = { ok: '#2e7d32', skip: '#999', error: '#c62828' };
+        const labels = { ok: '✅ 匯入', skip: '⏭ 跳過', error: '⚠️ 錯誤' };
+
+        previewEl.innerHTML = `
+            <p style="font-size:13px;color:#444;margin-bottom:8px;">共 ${parsed.length} 筆，將匯入 <strong>${toImport}</strong> 筆，跳過 ${rows.filter(r=>r._status==='skip').length} 筆。</p>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;font-size:13px;border-collapse:collapse;">
+                <thead><tr style="background:#f5f5f5;">
+                    <th style="padding:6px 10px;text-align:left;">品項名稱</th>
+                    <th style="padding:6px 10px;text-align:left;">分類</th>
+                    <th style="padding:6px 10px;text-align:left;">單位</th>
+                    <th style="padding:6px 10px;text-align:left;">狀態</th>
+                </tr></thead>
+                <tbody>${rows.map(r => `
+                    <tr style="border-bottom:1px solid #f0f0f0;">
+                        <td style="padding:6px 10px;">${esc(r.name || '—')}</td>
+                        <td style="padding:6px 10px;">${esc(r.category || '—')}</td>
+                        <td style="padding:6px 10px;">${esc(r.displayUnit || '—')}</td>
+                        <td style="padding:6px 10px;color:${colors[r._status]};font-weight:700;">${labels[r._status]}${r._msg ? ' ' + r._msg : ''}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table></div>`;
+
+        if (toImport > 0) {
+            confirmBtn.style.display = ''; cancelBtn.style.display = '';
+        } else {
+            confirmBtn.style.display = 'none'; cancelBtn.style.display = 'none';
+        }
+    };
+
+    window.confirmBatchImport = async function() {
+        if (!batchImportReady.length) return;
+        if (!confirm(`確定匯入 ${batchImportReady.length} 筆品項？`)) return;
+        try {
+            await runItemTransaction(items => {
+                let nextSort = items.length ? Math.max(...items.map(i => i.sortOrder || 0)) + 1 : 1;
+                batchImportReady.forEach(r => {
+                    const storageType = ['冷凍','冷藏','常溫'].includes(r.storageType) ? r.storageType : '冷凍';
+                    const patch = {
+                        id: Date.now() + Math.floor(Math.random() * 10000),
+                        name: r.name,
+                        ...(r.nameVi ? { nameVi: r.nameVi } : {}),
+                        category: r.category,
+                        displayUnit: r.displayUnit,
+                        baseUnit: r.baseUnit || r.displayUnit,
+                        basePerDisplay: nn(r.basePerDisplay, 1) || 1,
+                        storageType,
+                        thresholdDisplay: nn(r.thresholdDisplay, 0),
+                        enableThaw: r.enableThaw === true,
+                        enableReturn: r.enableReturn === true,
+                        primaryStation: r.primaryStation || 'pizzaStation',
+                        ...(r.defaultReceiveLocation ? { defaultReceiveLocation: r.defaultReceiveLocation } : {}),
+                        ...(r.defaultIssueLocation ? { defaultIssueLocation: r.defaultIssueLocation } : {}),
+                        ...(r.defaultReturnLocation ? { defaultReturnLocation: r.defaultReturnLocation } : {}),
+                        ...(r.procurementUnit ? { procurementUnit: r.procurementUnit } : {}),
+                        ...(nn(r.procurementFactor, 0) > 0 ? { procurementFactor: nn(r.procurementFactor) } : {}),
+                        ...(nn(r.unitPrice, 0) > 0 ? { unitPrice: nn(r.unitPrice) } : {}),   // 參考單價（資料層預留，尚無 UI）
+                        requiresProcessing: r.requiresProcessing === true,
+                        notes: r.notes || '',
+                        sortOrder: r.sortOrder ?? nextSort++,
+                        active: r.active !== false,
+                        locations: {},   // 匯入一律不帶庫存數量，全部歸零
+                    };
+                    items.push(normalizeItem(patch, items.length));
+                });
+            });
+            showToast(`✅ 已匯入 ${batchImportReady.length} 筆品項`);
+            cancelBatchImport();
+        } catch (e) {
+            alert('匯入失敗：' + e.message);
+        }
+    };
+
+    window.cancelBatchImport = function() {
+        batchImportReady = [];
+        document.getElementById('batchImportText').value = '';
+        document.getElementById('batchImportPreview').innerHTML = '';
+        document.getElementById('confirmImportBtn').style.display = 'none';
+        document.getElementById('cancelImportBtn').style.display = 'none';
+    };
+
+    window.exportItemsBackup = function() {
+        if (!inventoryData.length) { showToast('尚無品項可匯出'); return; }
+        const rows = [...inventoryData]
+            .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+            .map(item => {
+                const row = {
+                    name: item.name,
+                    category: item.category,
+                    displayUnit: item.displayUnit,
+                    baseUnit: item.baseUnit,
+                    basePerDisplay: item.basePerDisplay,
+                    storageType: item.storageType,
+                    thresholdDisplay: item.thresholdDisplay,
+                    enableThaw: item.enableThaw || false,
+                    enableReturn: item.enableReturn || false,
+                    primaryStation: item.primaryStation || 'pizzaStation',
+                    defaultReceiveLocation: item.defaultReceiveLocation,
+                    defaultIssueLocation: item.defaultIssueLocation,
+                    defaultReturnLocation: item.defaultReturnLocation,
+                    requiresProcessing: item.requiresProcessing === true,
+                    notes: item.notes || '',
+                    sortOrder: item.sortOrder,
+                    active: item.active !== false,
+                };
+                if (item.nameVi) row.nameVi = item.nameVi;
+                if (item.procurementUnit) row.procurementUnit = item.procurementUnit;
+                if (nn(item.procurementFactor, 0) > 0) row.procurementFactor = nn(item.procurementFactor);
+                if (nn(item.unitPrice, 0) > 0) row.unitPrice = nn(item.unitPrice);   // 參考單價（資料層預留，尚無 UI）
+                return row;
+            });
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `品項備份_${date}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(`✅ 已匯出 ${rows.length} 筆品項`);
+    };
+
+    // ── Item Editor ───────────────────────────────────────
+    window.openItemEditor = function(itemId = null) {
+        const item = itemId != null ? inventoryData.find(i => String(i.id) === String(itemId)) : null;
+        document.getElementById('itemModalTitle').textContent = item ? '編輯品項' : '新增品項';
+        document.getElementById('editItemId').value        = item?.id ?? '';
+        document.getElementById('editName').value          = item?.name ?? '';
+        document.getElementById('editNameVi').value        = item?.nameVi ?? '';
+        document.getElementById('editDisplayUnit').value   = item?.displayUnit ?? '包';
+        document.getElementById('editBaseUnit').value      = item?.baseUnit ?? item?.displayUnit ?? '包';
+        document.getElementById('editBasePerDisplay').value = item?.basePerDisplay ?? 1;
+        document.getElementById('editThreshold').value     = item?.thresholdDisplay ?? 0;
+        document.getElementById('editSortOrder').value     = item?.sortOrder ?? (inventoryData.length + 1);
+        document.getElementById('editActive').value        = String(item?.active !== false);
+
+        document.getElementById('editNotes').value          = item?.notes ?? '';
+        document.getElementById('editPrimaryStation').value = item?.primaryStation ?? 'pizzaStation';
+        document.getElementById('editProcurementUnit').value = item?.procurementUnit ?? '';
+        document.getElementById('editProcurementFactor').value = item?.procurementFactor > 0 ? item.procurementFactor : '';
+        document.getElementById('editRequiresProcessing').checked = item?.requiresProcessing === true;
+        const enableThawVal   = item?.enableThaw  === true;
+        const enableReturnVal = item?.enableReturn === true;
+        document.getElementById('enableThaw').checked   = enableThawVal;
+        document.getElementById('enableReturn').checked = enableReturnVal;
+
+        const stType = item?.storageType ?? '冷凍';
+        const preset = STORAGE_PRESETS[stType] || STORAGE_PRESETS['冷凍'];
+        document.getElementById('editReceiveLoc').value = item?.defaultReceiveLocation ?? preset.receive;
+        document.getElementById('editIssueLoc').value   = item?.defaultIssueLocation   ?? (enableThawVal ? 'onsiteChilled' : 'prep');
+        document.getElementById('editReturnLoc').value  = item?.defaultReturnLocation  ?? preset.receive;
+
+        // populate category select and set value
+        const catSel = document.getElementById('editCategory');
+        catSel.innerHTML = '<option value="">請選擇分類...</option>' +
+            categories.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+        const itemCat = item?.category ?? '';
+        if (itemCat && !categories.includes(itemCat)) {
+            catSel.innerHTML += `<option value="${esc(itemCat)}">${esc(itemCat)}</option>`;
+        }
+        catSel.value = itemCat;
+
+        refreshThawVisibility();
+        refreshReturnVisibility();
+        refreshUnitPreview();
+        document.getElementById('itemModal').classList.add('open');
+    };
+
+    const RECEIVE_TO_STORAGE = { warehouseFrozen: '冷凍', warehouseChilled: '冷藏', warehouseRoom: '常溫' };
+
+    window.onReceiveLocChange = function() {
+        const loc = document.getElementById('editReceiveLoc').value;
+        document.getElementById('editReturnLoc').value = loc;
+        refreshConsumeLocDisplay();
+    };
+
+    // 叫貨單位對基準單位的換算：明填 > 叫貨單位＝顯示單位 > 叫貨單位＝基準單位；否則 0（未知）
+    function resolveFactorBase(procUnit, procFactor, displayUnit, baseUnit, bpd) {
+        if (procFactor > 0) return procFactor;
+        const pu = procUnit || displayUnit;
+        if (pu === displayUnit) return bpd;
+        if (pu === baseUnit) return 1;
+        return 0;
+    }
+
+    window.refreshUnitPreview = function refreshUnitPreview() {
+        const box = document.getElementById('unitPreview');
+        if (!box) return;
+        const disp  = document.getElementById('editDisplayUnit').value.trim() || '（顯示單位）';
+        const base  = document.getElementById('editBaseUnit').value.trim() || disp;
+        const bpd   = nn(document.getElementById('editBasePerDisplay').value, 1) || 1;
+        const procU = document.getElementById('editProcurementUnit').value.trim() || disp;
+        const procF = nn(document.getElementById('editProcurementFactor').value, 0);
+        const reqP  = document.getElementById('editRequiresProcessing').checked;
+        const lines = [];
+        if (base !== disp) {
+            lines.push(`${bpd} ${base} = 1 ${disp}｜庫存以「${base}」計算、畫面顯示「${disp}」｜員工可用 ${disp}／${base} 操作`);
+        } else {
+            lines.push(`庫存單位：${disp}（顯示與基準相同）`);
+        }
+        if (reqP) {
+            lines.push(`叫貨以「${procU}」下單，員工簽收後需登記處理完成數量（${disp}）才入庫`);
+        } else {
+            const f = resolveFactorBase(procU, procF, disp, base, bpd);
+            if (f > 0) {
+                lines.push(`叫貨 1 ${procU} = ${f} ${base}${procF > 0 ? '' : '（自動換算）'}｜員工簽收可用 ${[procU, disp, base].filter((u, i, a) => a.indexOf(u) === i).join('／')} 點收`);
+            } else {
+                lines.push(`⚠️ 叫貨單位「${procU}」與顯示／基準單位都不同，無法自動換算，請填「叫貨換算」`);
+            }
+        }
+        box.innerHTML = lines.map(esc).join('<br>');
+    };
+
+    window.refreshConsumeLocDisplay = function refreshConsumeLocDisplay() {
+        const enableThaw = document.getElementById('enableThaw').checked;
+        const loc = enableThaw
+            ? document.getElementById('editIssueLoc').value
+            : document.getElementById('editReceiveLoc').value;
+        const name = LOCATION_DEFS[loc]?.name || loc;
+        document.getElementById('consumeLocDisplay').textContent =
+            `${name}（${enableThaw ? '備料至倉' : '入庫倉'}）`;
+    }
+
+    window.refreshThawVisibility = function refreshThawVisibility() {
+        const enableThaw  = document.getElementById('enableThaw').checked;
+        const issueSel    = document.getElementById('editIssueLoc');
+        issueSel.disabled = !enableThaw;
+        issueSel.style.opacity = enableThaw ? '' : '0.4';
+        refreshConsumeLocDisplay();
+    }
+
+    window.refreshReturnVisibility = function refreshReturnVisibility() {
+        const enableReturn = document.getElementById('enableReturn').checked;
+        const returnSel    = document.getElementById('editReturnLoc');
+        returnSel.disabled = !enableReturn;
+        returnSel.style.opacity = enableReturn ? '' : '0.4';
+    }
+
+    window.closeItemModal = function() {
+        document.getElementById('itemModal').classList.remove('open');
+    };
+
+    window.saveItem = function() {
+        const idVal          = document.getElementById('editItemId').value;
+        const name           = document.getElementById('editName').value.trim();
+        const nameVi         = document.getElementById('editNameVi').value.trim();
+        const category       = document.getElementById('editCategory').value;
+        const displayUnit    = document.getElementById('editDisplayUnit').value.trim();
+        const baseUnit       = document.getElementById('editBaseUnit').value.trim();
+        const basePerDisplay = nn(document.getElementById('editBasePerDisplay').value, 1) || 1;
+        const thresholdDisp  = nn(document.getElementById('editThreshold').value, 0);
+        const sortOrder      = nn(document.getElementById('editSortOrder').value, inventoryData.length + 1);
+        const active         = document.getElementById('editActive').value === 'true';
+        const enableThaw        = document.getElementById('enableThaw').checked;
+        const enableReturn      = document.getElementById('enableReturn').checked;
+        const primaryStation    = document.getElementById('editPrimaryStation').value;
+        const defaultReceiveLoc = document.getElementById('editReceiveLoc').value;
+        const storageType       = RECEIVE_TO_STORAGE[defaultReceiveLoc] || '常溫';
+        const defaultIssueLoc   = document.getElementById('editIssueLoc').value;
+        const defaultConsumeLoc = enableThaw ? defaultIssueLoc : defaultReceiveLoc;
+        const defaultReturnLoc  = document.getElementById('editReturnLoc').value;
+        const notes             = document.getElementById('editNotes').value.trim();
+        const procurementUnit    = document.getElementById('editProcurementUnit').value.trim();
+        const procurementFactor  = nn(document.getElementById('editProcurementFactor').value, 0);
+        const requiresProcessing = document.getElementById('editRequiresProcessing').checked;
+
+        const seen = new Set();
+        const allowedLocations = [defaultReceiveLoc, ...(enableThaw ? [defaultIssueLoc] : []), defaultConsumeLoc, primaryStation]
+            .filter(k => { if (seen.has(k)) return false; seen.add(k); return true; });
+
+        if (!name || !category || !displayUnit || !baseUnit) {
+            alert('請完整填寫名稱、分類、顯示單位、基準單位'); return;
+        }
+
+        if (displayUnit === baseUnit && basePerDisplay !== 1) {
+            if (!confirm(`換算設定為「${basePerDisplay} ${baseUnit} = 1 ${displayUnit}」，但顯示單位與基準單位相同。\n\n確定要使用此換算嗎？`)) return;
+        }
+
+        const patch = {
+            id: idVal ? nn(idVal) : Date.now(),
+            name, ...(nameVi ? { nameVi } : {}), category, storageType, displayUnit, baseUnit, basePerDisplay,
+            thresholdDisplay: thresholdDisp,
+            thresholdBase: thresholdDisp * basePerDisplay,
+            enableThaw, enableReturn, primaryStation,
+            procurementUnit, procurementFactor, requiresProcessing,
+            defaultReceiveLocation:  defaultReceiveLoc,
+            defaultIssueLocation:    enableThaw ? defaultIssueLoc : defaultReceiveLoc,
+            defaultConsumeLocation:  defaultConsumeLoc,
+            defaultReturnLocation:   defaultReturnLoc,
+            allowedLocations, sortOrder, active, notes
+        };
+
+        // Warn if a prep location is losing its role but still has stock
+        if (idVal) {
+            const PREP_SET = new Set(['onsiteChilled', 'prep']);
+            const existing = inventoryData.find(i => String(i.id) === String(idVal));
+            if (existing) {
+                const bpd = existing.basePerDisplay || 1;
+                const fmtStock = k => {
+                    const base = existing.locations?.[k] || 0;
+                    const disp = base / bpd;
+                    return `${Number.isInteger(disp) ? disp : disp.toFixed(2)} ${existing.displayUnit}`;
+                };
+                const warns = [];
+                // Issue location changed or thaw disabled — old issue loc loses prep role
+                const oldIssueLoc = existing.defaultIssueLocation;
+                const newIssueLoc = enableThaw ? defaultIssueLoc : null;
+                if (existing.enableThaw && PREP_SET.has(oldIssueLoc) && oldIssueLoc !== newIssueLoc && (existing.locations?.[oldIssueLoc] || 0) > 0) {
+                    warns.push(`備料倉「${LOCATION_DEFS[oldIssueLoc].name}」目前有 ${fmtStock(oldIssueLoc)}`);
+                }
+                // Consume location changed
+                const oldConsumeLoc = existing.defaultConsumeLocation;
+                if (PREP_SET.has(oldConsumeLoc) && oldConsumeLoc !== defaultConsumeLoc && (existing.locations?.[oldConsumeLoc] || 0) > 0) {
+                    warns.push(`消耗倉「${LOCATION_DEFS[oldConsumeLoc].name}」目前有 ${fmtStock(oldConsumeLoc)}`);
+                }
+                if (warns.length && !confirm(`注意：以下倉位設定將改變，但仍有庫存：\n\n${warns.join('\n')}\n\n請確認現場已處理，確定要繼續儲存嗎？`)) return;
+            }
+        }
+
+        // If main storage (receive) location changed and old location has stock, confirm zeroing
+        let zeroOutLoc = null;
+        if (idVal) {
+            const existing = inventoryData.find(i => String(i.id) === String(idVal));
+            if (existing && existing.defaultReceiveLocation && existing.defaultReceiveLocation !== defaultReceiveLoc) {
+                const oldLoc = existing.defaultReceiveLocation;
+                const oldStock = existing.locations?.[oldLoc] || 0;
+                if (oldStock > 0) {
+                    const bpd = existing.basePerDisplay || 1;
+                    const disp = oldStock / bpd;
+                    const dispStr = `${Number.isInteger(disp) ? disp : disp.toFixed(2)} ${existing.displayUnit}`;
+                    const oldName = LOCATION_DEFS[oldLoc]?.name || oldLoc;
+                    const newName = LOCATION_DEFS[defaultReceiveLoc]?.name || defaultReceiveLoc;
+                    if (!confirm(`⚠️ 大倉倉位即將從「${oldName}」改為「${newName}」。\n\n「${oldName}」目前還有 ${dispStr}，儲存後系統將自動歸零。\n\n確定要繼續？`)) return;
+                    zeroOutLoc = oldLoc;
+                }
+            }
+        }
+
+        runItemTransaction(items => {
+            const idx = items.findIndex(i => String(i.id) === String(patch.id));
+            if (idx >= 0) {
+                const base = { ...items[idx] };
+                if (zeroOutLoc) {
+                    base.locations = { ...(base.locations || {}), [zeroOutLoc]: 0 };
+                }
+                items[idx] = normalizeItem({ ...base, ...patch }, idx);
+            } else {
+                items.push(normalizeItem({ ...patch, locations: {} }, items.length));
+            }
+        }).then(() => closeItemModal());
+    };
+
+    window.toggleActive = function(itemId) {
+        const item = inventoryData.find(i => String(i.id) === String(itemId));
+        if (!item) return;
+        const next = item.active === false;
+        if (!confirm(`${next ? '啟用' : '停用'}「${item.name}」？`)) return;
+        runItemTransaction(items => {
+            const it = items.find(i => String(i.id) === String(itemId));
+            if (!it) return false;
+            it.active = next;
+        });
+    };
+
+    window.deleteItem = function(itemId) {
+        const item = inventoryData.find(i => String(i.id) === String(itemId));
+        if (!item) return;
+        const stock = effectiveStock(item);
+        const stockWarn = stock > 0
+            ? `\n\n⚠️ 此品項仍有庫存 ${parseFloat((stock / (item.basePerDisplay || 1)).toFixed(3))} ${item.displayUnit}，刪除後資料無法復原。`
+            : '';
+        if (!confirm(`確定永久刪除「${item.name}」？${stockWarn}\n此操作無法復原。`)) return;
+        runItemTransaction(items => {
+            const idx = items.findIndex(i => String(i.id) === String(itemId));
+            if (idx === -1) return false;
+            items.splice(idx, 1);
+            items.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+            items.forEach((it, i) => { it.sortOrder = i + 1; });
+        });
+    };
+
+    // ── PIN change ────────────────────────────────────────
+    window.changePin = function() {
+        const newP  = document.getElementById('newPin').value;
+        const confP = document.getElementById('confirmPin').value;
+        if (!/^\d{4}$/.test(newP)) { alert('PIN 碼必須是 4 位數字'); return; }
+        if (newP !== confP) { alert('兩次輸入不一致'); return; }
+        setDoc(settingsRef, { categories, adminPin: newP }, { merge: true })
+            .then(() => {
+                adminPin = newP;
+                const el = document.getElementById('adminPinDisplay');
+                if (el) el.textContent = newP;
+                showToast('✅ 管理 PIN 已更新');
+                ['newPin', 'confirmPin'].forEach(id => { document.getElementById(id).value = ''; });
+            })
+            .catch(e => alert('儲存失敗：' + e.message));
+    };
+
+    window.changeCountPin = function() {
+        const newP  = document.getElementById('newCountPin').value;
+        const confP = document.getElementById('confirmCountPin').value;
+        if (!/^\d{4}$/.test(newP)) { alert('PIN 碼必須是 4 位數字'); return; }
+        if (newP !== confP) { alert('兩次輸入不一致'); return; }
+        setDoc(settingsRef, { countPin: newP }, { merge: true })
+            .then(() => {
+                countPin = newP;
+                const el = document.getElementById('countPinDisplay');
+                if (el) el.textContent = newP;
+                showToast('✅ 盤點 PIN 已更新');
+                ['newCountPin', 'confirmCountPin'].forEach(id => { document.getElementById(id).value = ''; });
+            })
+            .catch(e => alert('儲存失敗：' + e.message));
+    };
+
+    window.clearCountPin = function() {
+        if (!confirm('確定要清除盤點 PIN 碼嗎？清除後盤點功能將無法使用。')) return;
+        setDoc(settingsRef, { countPin: "" }, { merge: true })
+            .then(() => {
+                countPin = "";
+                const el = document.getElementById('countPinDisplay');
+                if (el) el.textContent = '（尚未設定）';
+                showToast('✅ 盤點 PIN 已清除');
+            })
+            .catch(e => alert('儲存失敗：' + e.message));
+    };
+
+    window.queryLogStats = async function() {
+        const el = document.getElementById('logStatsDisplay');
+        el.textContent = '查詢中…';
+        const snap = await getDocs(logsRef);
+        const sixMonthsAgo = Date.now() - 180 * 24 * 3600 * 1000;
+        const old = snap.docs.filter(d => (d.data().ts || 0) < sixMonthsAgo).length;
+        el.textContent = `共 ${snap.size} 筆記錄，其中 ${old} 筆超過 6 個月。`;
+    };
+
+    window.cleanupOldLogs = async function() {
+        const sixMonthsAgo = Date.now() - 180 * 24 * 3600 * 1000;
+        const snap = await getDocs(query(logsRef, where("ts", "<", sixMonthsAgo)));
+        if (!snap.size) { showToast("沒有需要清理的記錄"); return; }
+        if (!confirm(`確認刪除 ${snap.size} 筆 6 個月前的記錄？此操作無法復原。`)) return;
+        const BATCH_SIZE = 500;
+        let batch = writeBatch(db);
+        let count = 0;
+        for (const d of snap.docs) {
+            batch.delete(d.ref);
+            if (++count % BATCH_SIZE === 0) { await batch.commit(); batch = writeBatch(db); }
+        }
+        if (count % BATCH_SIZE !== 0) await batch.commit();
+        showToast(`✅ 已清理 ${snap.size} 筆舊記錄`);
+        document.getElementById('logStatsDisplay').textContent = '（已更新，請重新查詢統計）';
+    };
+
+    window.resetAllStock = async function() {
+        if (!confirm('⚠️ 此操作將清除所有品項的倉位庫存（全部歸零），並刪除全部操作記錄。\n\n此操作無法復原！確定要繼續嗎？')) return;
+        if (!confirm('再次確認：確定要清除全部庫存數量和所有操作記錄嗎？')) return;
+        try {
+            await runItemTransaction(items => {
+                items.forEach(it => {
+                    if (!it.locations) it.locations = {};
+                    Object.keys(LOCATION_DEFS).forEach(k => { it.locations[k] = 0; });
+                });
+            });
+            const snap = await getDocs(logsRef);
+            if (snap.size > 0) {
+                const BATCH_SIZE = 500;
+                let batch = writeBatch(db);
+                let count = 0;
+                for (const d of snap.docs) {
+                    batch.delete(d.ref);
+                    if (++count % BATCH_SIZE === 0) { await batch.commit(); batch = writeBatch(db); }
+                }
+                if (count % BATCH_SIZE !== 0) await batch.commit();
+            }
+            showToast(`✅ 已清除所有庫存，共刪除 ${snap.size} 筆記錄`);
+        } catch (e) {
+            alert('清除失敗：' + e.message);
+        }
+    };
+
+    // ── Report ───────────────────────────────────────────
+    function effectiveStockKeys(item) {
+        const keys = [];
+        if (item.defaultReceiveLocation) keys.push(item.defaultReceiveLocation);
+        if (item.enableThaw && item.defaultIssueLocation && !keys.includes(item.defaultIssueLocation)) keys.push(item.defaultIssueLocation);
+        return keys;
+    }
+
+    function effectiveStock(item) {
+        return effectiveStockKeys(item).reduce((s, k) => s + (item.locations?.[k] || 0), 0);
+    }
+
+    function getDateRangeTs() {
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        if (reportPreset === 'today') {
+            return { start: todayStart, end: Date.now() };
+        } else if (reportPreset === 'yesterday') {
+            return { start: todayStart - 86400000, end: todayStart - 1 };
+        } else if (reportPreset === 'week') {
+            const dow = now.getDay() || 7;
+            return { start: todayStart - (dow - 1) * 86400000, end: Date.now() };
+        } else if (reportPreset === 'month') {
+            return { start: new Date(now.getFullYear(), now.getMonth(), 1).getTime(), end: Date.now() };
+        } else {
+            const s = document.getElementById('reportStart').value;
+            const e = document.getElementById('reportEnd').value;
+            return { start: s ? new Date(s).getTime() : 0, end: e ? new Date(e + 'T23:59:59').getTime() : Date.now() };
+        }
+    }
+
+    function refreshReportCategories() {
+        const sel = document.getElementById('reportCatFilter');
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">全部分類</option>' +
+            categories.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+        if (cur) sel.value = cur;
+    }
+
+    window.setPreset = function(preset) {
+        reportPreset = preset;
+        document.querySelectorAll('.preset-btns .preset-btn').forEach(b =>
+            b.classList.toggle('active', b.dataset.preset === preset));
+        document.getElementById('reportCustomDates').style.display = preset === 'custom' ? 'flex' : 'none';
+    };
+
+    window.generateReport = async function() {
+        const { start, end } = getDateRangeTs();
+        const catFilter = document.getElementById('reportCatFilter').value;
+        const active = inventoryData.filter(i => i.active !== false && (!catFilter || i.category === catFilter));
+
+        const body = document.getElementById('reportBody');
+        const summary = document.getElementById('reportSummary');
+        const exportBtn = document.getElementById('exportCsvBtn');
+        reportRows = [];
+        exportBtn.style.display = 'none';
+
+        if (!active.length) {
+            body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:20px;">無符合條件的品項</td></tr>';
+            summary.textContent = '';
+            return;
+        }
+
+        body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:20px;">查詢中…</td></tr>';
+        summary.textContent = '';
+
+        try {
+            const logsSnap = await getDocs(query(logsRef, where("ts", ">=", start), where("ts", "<=", end)));
+            const logsByItem = {};
+            lastLogsFlat = [];
+            logsSnap.docs.forEach(d => {
+                const l = d.data();
+                lastLogsFlat.push(l);
+                if (l.itemId == null || !l.actionType) return;
+                const key = String(l.itemId);
+                if (!logsByItem[key]) logsByItem[key] = [];
+                logsByItem[key].push(l);
+            });
+
+            const itemsSorted = [...active].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+            reportRows = itemsSorted.map(item => {
+                const logs = logsByItem[String(item.id)] || [];
+                let receive = 0, consume = 0, ret = 0, waste = 0, adj = 0, hasAdj = false;
+                logs.forEach(l => {
+                    const qty = l.baseQty || 0;
+                    if (l.actionType === 'receive') receive += qty;
+                    else if (l.actionType === 'consume') consume += qty;
+                    else if (l.actionType === 'return') ret += qty;
+                    else if (l.actionType === 'waste') waste += qty;
+                    else if (l.actionType === 'count') {
+                        if (l.netAdjBase != null) { adj += l.netAdjBase; hasAdj = true; }
+                    }
+                });
+                const closing = effectiveStock(item);
+                const opening = closing - (receive + ret - consume - waste + adj);
+                return { name: item.name, category: item.category, opening, receive, consume, ret, waste, adj, hasAdj, closing, bpd: item.basePerDisplay || 1, unit: item.displayUnit };
+            });
+
+            reportSort = { col: null, dir: 1 };
+            lastLogsByItem = logsByItem;
+            lastReportActive = active;
+            lastRange = { start, end };
+            renderCurrentReport();
+            const fmtDate = ts => new Date(ts).toLocaleDateString('zh-TW');
+            summary.textContent = `查詢範圍：${fmtDate(start)} ～ ${fmtDate(end)}，共 ${reportRows.length} 項，操作記錄 ${logsSnap.size} 筆`;
+            exportBtn.style.display = '';
+        } catch (e) {
+            body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#c62828;padding:20px;">查詢失敗：${esc(e.message)}</td></tr>`;
+        }
+    };
+
+    // ── 分析報表（消耗排行／報廢統計／盤點差異）────────────
+    let reportType = 'movement';
+    let lastLogsByItem = null;
+    let lastLogsFlat = [];
+    let lastReportActive = [];
+    let lastRange = null;
+    let _movementHeadHTML = null;
+
+    const TXLOG_ACTIONS = {
+        receive: { label: '入庫', color: '#2e7d32', bg: '#e8f5e9' },
+        prep:    { label: '備料', color: '#006064', bg: '#e0f2f1' },
+        consume: { label: '消耗', color: '#c62828', bg: '#ffebee' },
+        return:  { label: '回放', color: '#e65100', bg: '#fff3e0' },
+        waste:   { label: '報廢', color: '#5d4037', bg: '#efebe9' },
+    };
+
+    const ANALYSIS_DEFS = {
+        consume: {
+            cols: [
+                { k: 'name', l: '品項' }, { k: 'category', l: '類別' },
+                { k: 'c', l: '消耗量', num: true }, { k: 'cc', l: '消耗次數', num: true },
+                { k: 'w', l: '報廢量', num: true }, { k: 'wr', l: '報廢率', num: true },
+            ],
+            note: '預設依「消耗次數」由多到少排序，點欄位標題可改排序。量的排序以基準量比較，各品項單位不同僅供參考；報廢率 = 報廢 ÷（消耗＋報廢）。',
+        },
+        waste: {
+            cols: [
+                { k: 'name', l: '品項' }, { k: 'category', l: '類別' },
+                { k: 'w', l: '報廢量', num: true }, { k: 'wc', l: '報廢次數', num: true },
+                { k: null, l: '原因分解' }, { k: 'wr', l: '報廢率', num: true },
+            ],
+            note: '只列出期間內有報廢記錄的品項，預設依「報廢次數」排序，點欄位標題可改排序。報廢率 = 報廢 ÷（消耗＋報廢）。',
+        },
+        countdiff: {
+            cols: [
+                { k: 'name', l: '品項' }, { k: 'category', l: '類別' },
+                { k: 'times', l: '盤點次數', num: true }, { k: 'plus', l: '盤盈 ＋', num: true },
+                { k: 'minus', l: '盤虧 −', num: true }, { k: 'net', l: '淨調整', num: true },
+            ],
+            note: '只列出期間內有盤點調整的品項，預設依調整次數排序，點欄位標題可改排序。盤虧多的品項代表帳實常不符，值得追查原因。',
+        },
+        orders: {
+            cols: [
+                { k: 'name', l: '品項' }, { k: 'category', l: '類別' },
+                { k: 'orders', l: '叫貨次數', num: true }, { k: 'qty', l: '總叫貨量', num: true },
+                { k: 'recv', l: '總簽收', num: true }, { k: 'short', l: '短交結案', num: true },
+                { k: 'over', l: '溢收結案', num: true }, { k: 'avgDays', l: '平均完成天數', num: true },
+            ],
+            note: '統計「建立時間」落在期間內的叫貨單（含進行中）。平均完成天數 = 下單到完成的平均天數，只計已完成的單；短交／溢收為結案次數。',
+        },
+    };
+    let analysisSort = { col: null, dir: 1 };
+
+    function analysisHead(def) {
+        return def.cols.map(c => {
+            const align = c.num ? ' style="text-align:right;"' : '';
+            if (!c.k) return `<th${align}>${c.l}</th>`;
+            const ind = analysisSort.col === c.k ? (analysisSort.dir === 1 ? ' ▲' : ' ▼') : '';
+            return `<th class="sort-th"${align} onclick="sortAnalysis('${c.k}')">${c.l}<span class="sort-ind">${ind}</span></th>`;
+        }).join('');
+    }
+
+    window.sortAnalysis = function(col) {
+        analysisSort.dir = analysisSort.col === col ? -analysisSort.dir : 1;
+        analysisSort.col = col;
+        renderCurrentReport();
+    };
+
+    // 異動明細：列出期間內每一筆入庫／備料／消耗／回放／報廢操作（不含庫存數字、不含盤點）
+    function txlogRows() {
+        const catFilter = document.getElementById('reportCatFilter')?.value || '';
+        const catById = {};
+        inventoryData.forEach(i => { catById[String(i.id)] = i.category || ''; });
+        return lastLogsFlat
+            .filter(l => TXLOG_ACTIONS[l.actionType])
+            .filter(l => !catFilter || catById[String(l.itemId)] === catFilter)
+            .sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    }
+
+    function txlogParse(l) {
+        const raw = l.text || '';
+        const detail = raw.includes('：') ? raw.split('：').slice(1).join('：') : raw;
+        return detail.replace(/^[📦🍕📤↩️🗑\s]+/, '');
+    }
+
+    function renderTxLog() {
+        const headRow = document.getElementById('reportHeadRow');
+        const note = document.getElementById('reportNote');
+        const body = document.getElementById('reportBody');
+        headRow.innerHTML = '<th style="width:150px;">時間</th><th style="width:70px;">動作</th><th>內容</th>';
+        note.textContent = '列出期間內每一筆入庫／備料／消耗／回放／報廢操作，依時間新到舊排列（不含盤點與庫存結餘數字）。可用上方分類篩選。';
+        if (!lastLogsFlat.length && !lastRange) {
+            body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;padding:20px;">請先按「查詢」選定期間</td></tr>';
+            return;
+        }
+        const rows = txlogRows();
+        if (!rows.length) {
+            body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;padding:20px;">期間內無異動記錄</td></tr>';
+            return;
+        }
+        body.innerHTML = rows.map(l => {
+            const a = TXLOG_ACTIONS[l.actionType];
+            return `<tr>
+                <td style="color:#666;font-size:13px;white-space:nowrap;">${esc(l.time || '')}</td>
+                <td><span class="badge" style="background:${a.bg};color:${a.color};">${a.label}</span></td>
+                <td style="font-size:13px;">${esc(txlogParse(l))}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    window.setReportType = function(tp) {
+        reportType = tp;
+        analysisSort = { col: null, dir: 1 };
+        document.querySelectorAll('#reportTypeChips .preset-btn').forEach(b =>
+            b.classList.toggle('active', b.dataset.rt === tp));
+        renderCurrentReport();
+    };
+
+    function renderCurrentReport() {
+        const headRow = document.getElementById('reportHeadRow');
+        const note = document.getElementById('reportNote');
+        if (_movementHeadHTML === null) _movementHeadHTML = headRow.innerHTML;
+        if (reportType === 'movement') {
+            headRow.innerHTML = _movementHeadHTML;
+            note.textContent = '⚠️ 期初庫存 = 期末庫存 − 入庫 − 回放 + 消耗 + 報廢 − 盤點調整，以「目前庫存」回推。盤點調整欄僅統計此版本更新後的盤點記錄，舊記錄顯示「—」。';
+            renderReportTable();
+            return;
+        }
+        if (reportType === 'txlog') { renderTxLog(); return; }
+        const def = ANALYSIS_DEFS[reportType];
+        headRow.innerHTML = analysisHead(def);
+        note.textContent = def.note;
+        const body = document.getElementById('reportBody');
+        const nCols = def.cols.length;
+        if (!lastLogsByItem) {
+            body.innerHTML = `<tr><td colspan="${nCols}" style="text-align:center;color:#999;padding:20px;">請先按「查詢」選定期間</td></tr>`;
+            return;
+        }
+        let rows = buildAnalysisRows(reportType);
+        if (!rows.length) {
+            body.innerHTML = `<tr><td colspan="${nCols}" style="text-align:center;color:#999;padding:20px;">期間內無相關記錄</td></tr>`;
+            return;
+        }
+        if (analysisSort.col) {
+            rows = [...rows].sort((a, b) => {
+                const va = a[analysisSort.col], vb = b[analysisSort.col];
+                if (typeof va === 'string') return analysisSort.dir * va.localeCompare(vb, 'zh-TW');
+                return analysisSort.dir * ((va || 0) - (vb || 0));
+            });
+        }
+        const q = (base, bpd, unit) => `${fmtDisp(base, bpd)} ${esc(unit)}`;
+        const pct = v => `${Math.round(v * 100)}%`;
+        if (reportType === 'consume') {
+            body.innerHTML = rows.map(r => `<tr>
+                <td><strong>${esc(r.name)}</strong></td><td>${esc(r.category)}</td>
+                <td class="num-cell">${q(r.c, r.bpd, r.unit)}</td>
+                <td class="num-cell">${r.cc}</td>
+                <td class="num-cell">${r.w > 0 ? `<span style="color:#5d4037;">${q(r.w, r.bpd, r.unit)}</span>` : '<span style="color:#bbb;">—</span>'}</td>
+                <td class="num-cell">${r.w > 0 ? `<span style="color:${r.wr >= 0.2 ? '#c62828' : '#5d4037'};">${pct(r.wr)}</span>` : '<span style="color:#bbb;">—</span>'}</td>
+            </tr>`).join('');
+        } else if (reportType === 'waste') {
+            body.innerHTML = rows.map(r => `<tr>
+                <td><strong>${esc(r.name)}</strong></td><td>${esc(r.category)}</td>
+                <td class="num-cell" style="color:#5d4037;">${q(r.w, r.bpd, r.unit)}</td>
+                <td class="num-cell">${r.wc}</td>
+                <td style="font-size:13px;color:#666;">${esc(Object.entries(r.reasons).map(([k, v]) => `${k} ${v} 次`).join('、'))}</td>
+                <td class="num-cell"><span style="color:${r.wr >= 0.2 ? '#c62828' : '#5d4037'};">${pct(r.wr)}</span></td>
+            </tr>`).join('');
+        } else if (reportType === 'countdiff') {
+            body.innerHTML = rows.map(r => `<tr>
+                <td><strong>${esc(r.name)}</strong></td><td>${esc(r.category)}</td>
+                <td class="num-cell">${r.times}</td>
+                <td class="num-cell">${r.plus > 0 ? `<span style="color:#2e7d32;">+${q(r.plus, r.bpd, r.unit)}</span>` : '<span style="color:#bbb;">—</span>'}</td>
+                <td class="num-cell">${r.minus < 0 ? `<span style="color:#c62828;">${q(r.minus, r.bpd, r.unit)}</span>` : '<span style="color:#bbb;">—</span>'}</td>
+                <td class="num-cell"><strong>${r.net >= 0 ? '+' : ''}${q(r.net, r.bpd, r.unit)}</strong></td>
+            </tr>`).join('');
+        } else if (reportType === 'orders') {
+            body.innerHTML = rows.map(r => `<tr>
+                <td><strong>${esc(r.name)}</strong></td><td>${esc(r.category)}</td>
+                <td class="num-cell">${r.orders}</td>
+                <td class="num-cell">${r.qty} ${esc(r.unit)}</td>
+                <td class="num-cell">${r.recv > 0 ? `${r.recv} ${esc(r.unit)}` : '<span style="color:#bbb;">—</span>'}</td>
+                <td class="num-cell">${r.short ? `<span style="color:#8d6e00;">${r.short}</span>` : '<span style="color:#bbb;">—</span>'}</td>
+                <td class="num-cell">${r.over ? `<span style="color:#ad1457;">${r.over}</span>` : '<span style="color:#bbb;">—</span>'}</td>
+                <td class="num-cell">${r.avgDays != null ? r.avgDays.toFixed(1) + ' 天' : '<span style="color:#bbb;">—</span>'}</td>
+            </tr>`).join('');
+        }
+    }
+
+    function buildAnalysisRows(tp) {
+        const items = lastReportActive.length ? lastReportActive : inventoryData.filter(i => i.active !== false);
+        if (tp === 'consume') {
+            return items.map(item => {
+                const logs = lastLogsByItem[String(item.id)] || [];
+                let c = 0, cc = 0, w = 0, wc = 0;
+                logs.forEach(l => {
+                    if (l.actionType === 'consume') { c += l.baseQty || 0; cc++; }
+                    else if (l.actionType === 'waste') { w += l.baseQty || 0; wc++; }
+                });
+                return { name: item.name, category: item.category, c, cc, w, wc, wr: (c + w) > 0 ? w / (c + w) : 0, bpd: item.basePerDisplay || 1, unit: item.displayUnit };
+            }).filter(r => r.c > 0 || r.w > 0).sort((a, b) => b.cc - a.cc);
+        }
+        if (tp === 'waste') {
+            return items.map(item => {
+                const logs = lastLogsByItem[String(item.id)] || [];
+                let w = 0, c = 0; const reasons = {}; let wc = 0;
+                logs.forEach(l => {
+                    if (l.actionType === 'consume') c += l.baseQty || 0;
+                    else if (l.actionType === 'waste') {
+                        w += l.baseQty || 0; wc++;
+                        const r = (l.reason || '').trim() || '未填原因';
+                        reasons[r] = (reasons[r] || 0) + 1;
+                    }
+                });
+                return { name: item.name, category: item.category, w, wc, reasons, wr: (c + w) > 0 ? w / (c + w) : 0, bpd: item.basePerDisplay || 1, unit: item.displayUnit };
+            }).filter(r => r.wc > 0).sort((a, b) => b.wc - a.wc);
+        }
+        if (tp === 'countdiff') {
+            return items.map(item => {
+                const logs = (lastLogsByItem[String(item.id)] || []).filter(l => l.actionType === 'count' && l.netAdjBase != null);
+                let plus = 0, minus = 0;
+                logs.forEach(l => { if (l.netAdjBase > 0) plus += l.netAdjBase; else minus += l.netAdjBase; });
+                return { name: item.name, category: item.category, times: logs.length, plus, minus, net: plus + minus, bpd: item.basePerDisplay || 1, unit: item.displayUnit };
+            }).filter(r => r.times > 0).sort((a, b) => b.times - a.times);
+        }
+        if (tp === 'orders') {
+            const ids = new Set(items.map(i => String(i.id)));
+            const byItem = {};
+            ordersData.forEach(o => {
+                const ts = new Date(o.createdAt).getTime();
+                if (!Number.isFinite(ts) || ts < lastRange.start || ts > lastRange.end) return;
+                const k = String(o.itemId);
+                if (!ids.has(k)) return;
+                const item = inventoryData.find(i => String(i.id) === k);
+                const b = byItem[k] || (byItem[k] = { name: o.itemName, category: item?.category || '', orders: 0, qty: 0, recv: 0, unit: '', short: 0, over: 0, days: [] });
+                const tk = orderTrack(o);
+                b.orders++;
+                b.qty = Math.round((b.qty + tk.total) * 100) / 100;
+                b.recv = Math.round((b.recv + nn(o.receiveQty, 0)) * 100) / 100;
+                b.unit = tk.unit;
+                if (o.closedShort) b.short++;
+                if (o.closedOver) b.over++;
+                if (o.status === 'done' && o.orderedAt && o.doneAt) {
+                    const d = (new Date(o.doneAt) - new Date(o.orderedAt)) / 86400000;
+                    if (Number.isFinite(d) && d >= 0) b.days.push(d);
+                }
+            });
+            return Object.values(byItem)
+                .map(b => ({ ...b, avgDays: b.days.length ? b.days.reduce((s, x) => s + x, 0) / b.days.length : null }))
+                .sort((a, b) => b.orders - a.orders);
+        }
+        return [];
+    }
+
+    function renderReportTable() {
+        const cols = ['name', 'category', 'opening', 'receive', 'consume', 'ret', 'waste', 'adj', 'closing'];
+        cols.forEach(c => {
+            const el = document.getElementById('sort-' + c);
+            if (el) el.textContent = reportSort.col === c ? (reportSort.dir === 1 ? ' ▲' : ' ▼') : '';
+        });
+
+        const data = [...reportRows].sort((a, b) => {
+            if (!reportSort.col) return 0;
+            const va = a[reportSort.col], vb = b[reportSort.col];
+            if (typeof va === 'string') return reportSort.dir * va.localeCompare(vb, 'zh-TW');
+            return reportSort.dir * (va - vb);
+        });
+
+        const fmtBase = (base, bpd, unit) => {
+            const disp = base / bpd;
+            const s = Math.abs(disp - Math.round(disp)) < 0.005 ? Math.round(disp) : disp.toFixed(2);
+            return `${s} ${esc(unit)}`;
+        };
+        const fmtSign = (base, bpd, unit, sign, color) => base > 0
+            ? `<span style="color:${color};">${sign}${fmtBase(base, bpd, unit)}</span>`
+            : '<span style="color:#bbb;">—</span>';
+        const fmtAdj = (r) => {
+            if (!r.hasAdj) return '<span style="color:#bbb;">—</span>';
+            if (r.adj === 0) return '<span style="color:#bbb;">0</span>';
+            const disp = r.adj / r.bpd;
+            const s = Math.abs(disp - Math.round(disp)) < 0.005 ? Math.round(disp) : disp.toFixed(2);
+            const color = r.adj > 0 ? '#2e7d32' : '#c62828';
+            const sign = r.adj > 0 ? '+' : '';
+            return `<span style="color:${color};">${sign}${s} ${esc(r.unit)}</span>`;
+        };
+
+        document.getElementById('reportBody').innerHTML = data.map(r => `<tr>
+            <td><strong>${esc(r.name)}</strong></td>
+            <td>${esc(r.category)}</td>
+            <td class="num-cell">${fmtBase(r.opening, r.bpd, r.unit)}</td>
+            <td class="num-cell">${fmtSign(r.receive, r.bpd, r.unit, '+', '#2e7d32')}</td>
+            <td class="num-cell">${fmtSign(r.consume, r.bpd, r.unit, '-', '#c62828')}</td>
+            <td class="num-cell">${fmtSign(r.ret,     r.bpd, r.unit, '+', '#1565c0')}</td>
+            <td class="num-cell">${fmtSign(r.waste,   r.bpd, r.unit, '-', '#5d4037')}</td>
+            <td class="num-cell">${fmtAdj(r)}</td>
+            <td class="num-cell"><strong>${fmtBase(r.closing, r.bpd, r.unit)}</strong></td>
+        </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:#999;padding:20px;">無資料</td></tr>';
+    }
+
+    window.sortReport = function(col) {
+        if (reportType !== 'movement' || !reportRows.length) return;
+        reportSort.dir = reportSort.col === col ? -reportSort.dir : 1;
+        reportSort.col = col;
+        renderReportTable();
+    };
+
+    window.exportReportXlsx = function() {
+        const fmtNum = (base, bpd) => {
+            const d = base / bpd;
+            return Math.abs(d - Math.round(d)) < 0.005 ? Math.round(d) : parseFloat(d.toFixed(2));
+        };
+        if (reportType === 'txlog') {
+            const rows = txlogRows();
+            if (!rows.length) { showToast('期間內無異動記錄'); return; }
+            const header = ['時間', '動作', '內容'];
+            const data = rows.map(l => [l.time || '', TXLOG_ACTIONS[l.actionType].label, txlogParse(l)]);
+            const ws = window.XLSX.utils.aoa_to_sheet([header, ...data]);
+            ws['!cols'] = [{ wch: 20 }, { wch: 8 }, { wch: 44 }];
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, '異動明細');
+            window.XLSX.writeFile(wb, `異動明細_${new Date().toISOString().split('T')[0]}.xlsx`);
+            return;
+        }
+        if (reportType !== 'movement') {
+            if (!lastLogsByItem) { showToast('請先按「查詢」'); return; }
+            const rows = buildAnalysisRows(reportType);
+            if (!rows.length) { showToast('期間內無相關記錄'); return; }
+            let header, data, sheetName;
+            if (reportType === 'consume') {
+                header = ['品項', '類別', '單位', '消耗量', '消耗次數', '報廢量', '報廢率%'];
+                data = rows.map(r => [r.name, r.category, r.unit, fmtNum(r.c, r.bpd), r.cc, fmtNum(r.w, r.bpd), Math.round(r.wr * 100)]);
+                sheetName = '消耗排行';
+            } else if (reportType === 'waste') {
+                header = ['品項', '類別', '單位', '報廢量', '報廢次數', '原因分解', '報廢率%'];
+                data = rows.map(r => [r.name, r.category, r.unit, fmtNum(r.w, r.bpd), r.wc, Object.entries(r.reasons).map(([k, v]) => `${k} ${v} 次`).join('、'), Math.round(r.wr * 100)]);
+                sheetName = '報廢統計';
+            } else if (reportType === 'orders') {
+                header = ['品項', '類別', '單位', '叫貨次數', '總叫貨量', '總簽收', '短交結案', '溢收結案', '平均完成天數'];
+                data = rows.map(r => [r.name, r.category, r.unit, r.orders, r.qty, r.recv, r.short, r.over, r.avgDays != null ? parseFloat(r.avgDays.toFixed(1)) : '']);
+                sheetName = '叫貨分析';
+            } else {
+                header = ['品項', '類別', '單位', '盤點次數', '盤盈', '盤虧', '淨調整'];
+                data = rows.map(r => [r.name, r.category, r.unit, r.times, fmtNum(r.plus, r.bpd), fmtNum(r.minus, r.bpd), fmtNum(r.net, r.bpd)]);
+                sheetName = '盤點差異';
+            }
+            const ws = window.XLSX.utils.aoa_to_sheet([header, ...data]);
+            ws['!cols'] = header.map((h, i) => ({ wch: i === 0 ? 22 : 12 }));
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            window.XLSX.writeFile(wb, `${sheetName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+            return;
+        }
+        if (!reportRows.length) return;
+        const header = ['品項', '類別', '單位', '期初庫存', '入庫', '消耗', '回放', '報廢', '盤點調整', '期末庫存'];
+        const data = [header, ...reportRows.map(r => [
+            r.name, r.category, r.unit,
+            fmtNum(r.opening, r.bpd), fmtNum(r.receive, r.bpd),
+            fmtNum(r.consume, r.bpd), fmtNum(r.ret, r.bpd),
+            fmtNum(r.waste, r.bpd),
+            r.hasAdj ? fmtNum(r.adj, r.bpd) : '',
+            fmtNum(r.closing, r.bpd)
+        ])];
+        const ws = window.XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{ wch: 22 }, { wch: 10 }, { wch: 6 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
+        const wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, ws, '庫存報表');
+        window.XLSX.writeFile(wb, `庫存報表_${new Date().toISOString().split('T')[0]}.xlsx`);
+    };
+
+    // pre-fill custom date inputs with today
+    (function() {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const s = document.getElementById('reportStart');
+        const e = document.getElementById('reportEnd');
+        if (s) s.value = todayStr;
+        if (e) e.value = todayStr;
+    })();
+
+    // ── Toast ─────────────────────────────────────────────
+    function showToast(text) {
+        const el = document.getElementById('toast');
+        el.textContent = text;
+        el.style.display = 'block';
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(() => { el.style.display = 'none'; }, 2200);
+    }
+
+    // ── Offline Banner ────────────────────────────────────
+    (function() {
+        const banner = document.getElementById('offlineBanner');
+        function goOffline() {
+            banner.classList.add('show');
+            document.body.classList.add('is-offline');
+        }
+        function goOnline() {
+            banner.classList.remove('show');
+            document.body.classList.remove('is-offline');
+            showToast('✅ 已恢復連線');
+        }
+        window.addEventListener('offline', goOffline);
+        window.addEventListener('online', goOnline);
+        if (!navigator.onLine) goOffline();
+    })();
+</script>
+</body>
+</html>
