@@ -301,7 +301,7 @@
     <header class="hero">
         <div>
             <h1>🍕 蔡叔叔比薩屋 後場管理系統 </h1>
-            <p class="subtitle">庫存、叫貨、銷售、盤點，一站完成！ <span style="font-size:11px;color:#9ab0a5;">v87</span></p>
+            <p class="subtitle">庫存、叫貨、銷售、盤點，一站完成！ <span style="font-size:11px;color:#9ab0a5;">v89</span></p>
         </div>
         <div class="header-actions">
             <div class="lang-toggle">
@@ -444,13 +444,12 @@
    
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",
-  authDomain: "inv3-84f00.firebaseapp.com",
-  databaseURL: "https://inv3-84f00-default-rtdb.firebaseio.com",
-  projectId: "inv3-84f00",
-  storageBucket: "inv3-84f00.firebasestorage.app",
-  messagingSenderId: "328169054973",
-  appId: "1:328169054973:web:eac5caf163bf3cf5eed494"
+  apiKey: "AIzaSyCUYkvADtC6tM8uENRFNUb7OJlTUcisfFE",
+  authDomain: "caishushu-inventory.firebaseapp.com",
+  projectId: "caishushu-inventory",
+  storageBucket: "caishushu-inventory.firebasestorage.app",
+  messagingSenderId: "228644978060",
+  appId: "1:228644978060:web:ac87081548d5a19305eaa9"
 };
 
     const app = initializeApp(firebaseConfig);
@@ -459,9 +458,13 @@ const firebaseConfig = {
         localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
     });
     const docRef  = doc(db, "inventory", "mainStore");
+    const settingsDocRef = doc(db, "inventory", "settings");   // 分類、adminPin、countPin 的正式儲存位置
     const logsRef = collection(db, "inventory", "mainStore", "logs");
     const ordersRef = collection(db, "inventory", "mainStore", "orders");
     const salesRef  = collection(db, "inventory", "mainStore", "sales");
+
+    // 盤點／管理 PIN 存在 inventory/settings 文件（與後台一致），前台需獨立監聽才讀得到
+    let configPins = { countPin: "", adminPin: "1234" };
 
     const SCHEMA_VERSION = 2;
     const WAREHOUSE_KEYS = ["warehouseFrozen", "warehouseChilled", "warehouseRoom"];
@@ -871,6 +874,13 @@ const firebaseConfig = {
         window.clearTimeout(showToast._timer);
         showToast._timer = window.setTimeout(() => toast.classList.remove("show"), 2200);
     }
+
+    onSnapshot(settingsDocRef, snap => {
+        if (snap.exists()) {
+            const d = snap.data();
+            configPins = { countPin: d.countPin || "", adminPin: d.adminPin || "1234" };
+        }
+    }, err => console.warn('settings 監聽失敗', err));
 
     onSnapshot(docRef, { includeMetadataChanges: true }, (docSnap) => {
         const meta = docSnap.metadata;
@@ -1820,35 +1830,45 @@ const firebaseConfig = {
     }
 
     // 以資料庫最新狀態原子更新訂單，避免連續操作用到畫面舊資料
-    async function updateOrderTx(docId, mutate) {
+    // 簽收原子交易：在單一 Firestore 交易內同時處理「加庫存＋寫日誌」與「更新訂單狀態」，
+    // 任一步失敗整筆回滾，避免庫存加了但訂單沒更新導致重複入庫。
+    // needStock=false 時只讀寫訂單（如需處理品項的第一段簽收）。
+    // mutate({ items, fresh, pushStockLog }) 回傳 { orderPatch, toast } 或 { error }。
+    async function receiveTransaction(docId, needStock, mutate) {
+        if (!guardOnline()) return { ok: false };
+        let out = { ok: false };
         try {
             await runTransaction(db, async tx => {
-                const ref = doc(ordersRef, docId);
-                const snap = await tx.get(ref);
-                if (!snap.exists()) return;
-                const patch = mutate({ docId, ...snap.data() });
-                if (patch) tx.update(ref, patch);
+                const orderRef = doc(ordersRef, docId);
+                const mainSnap = needStock ? await tx.get(docRef) : null;   // 讀取須在寫入前
+                const orderSnap = await tx.get(orderRef);
+                if (!orderSnap.exists()) { out = { ok: false, error: t('item_not_found') }; throw new Error('__abort__'); }
+                const fresh = { docId, ...orderSnap.data() };
+                const pendingLogs = [];
+                let items = null, txSettings = null;
+                if (needStock) {
+                    const data = mainSnap.exists() ? mainSnap.data() : { items: [], settings: {} };
+                    items = normalizeItems(data.items || []);
+                    txSettings = { categories: [], locations: Object.values(LOCATION_DEFS), ...(data.settings || {}) };
+                }
+                const pushStockLog = (text, meta) => pushLog(pendingLogs, text, meta);
+                const r = mutate({ items, fresh, pushStockLog });
+                if (!r || r.error) { out = { ok: false, error: r && r.error }; throw new Error('__abort__'); }
+                if (needStock) {
+                    tx.set(docRef, { schemaVersion: SCHEMA_VERSION, items: normalizeItems(items), settings: txSettings, lastUpdated: new Date().toISOString() });
+                    pendingLogs.forEach(l => tx.set(doc(logsRef), l));
+                }
+                tx.update(orderRef, r.orderPatch);
+                out = { ok: true, toast: r.toast };
             });
-            return true;
         } catch (e) {
-            alert(t('tx_error') + e.message);
-            return false;
+            if (e.message !== '__abort__') { alert(t('tx_error') + e.message); return { ok: false }; }
         }
+        return out;
     }
 
-    async function stockInFromOrder(order, stockQty, isBaseQty = false) {
-        const ok = await runStockTransaction((items, txLogs) => {
-            const it = items.find(i => String(i.id) === String(order.itemId));
-            if (!it) { alert(t('item_not_found')); return false; }
-            const recLoc = it.defaultReceiveLocation || 'warehouseFrozen';
-            const baseQty = roundQty(isBaseQty ? stockQty : stockQty * (it.basePerDisplay || 1));
-            const qtyText = isBaseQty ? `${stockQty} ${it.baseUnit}` : `${stockQty} ${it.displayUnit}`;
-            if (!it.locations) it.locations = {};
-            it.locations[recLoc] = roundQty((it.locations[recLoc] || 0) + baseQty);
-            pushLog(txLogs, `📦 進貨入庫：【${it.name}】${LOCATION_DEFS[recLoc]?.name || recLoc} +${qtyText}（叫貨簽收）`,
-                { itemId: it.id, actionType: 'receive', baseQty, toLocation: recLoc, orderId: order.docId });
-        }, { silent: true });
-        return ok;
+    function statusToast(status) {
+        return status === 'done' ? t('rcv_done_toast') : status === 'over' ? t('rcv_over_toast') : t('rcv_partial_toast');
     }
 
     window.receiveSignIn = async function(docId) {
@@ -1866,28 +1886,33 @@ const firebaseConfig = {
         if (!dr.ok) return;
         const btn = lockReceiveBtn(docId);
         if (!btn) return;
-        let success = false;
-        try {
-            if (!(await stockInFromOrder(o, stockQty, isBaseMode))) return;
+        const res = await receiveTransaction(docId, true, ({ items, fresh, pushStockLog }) => {
+            const it = items.find(i => String(i.id) === String(o.itemId));
+            if (!it) return { error: t('item_not_found') };
+            const recLoc = it.defaultReceiveLocation || 'warehouseFrozen';
+            const baseQty = roundQty(isBaseMode ? stockQty : stockQty * (it.basePerDisplay || 1));
+            const qtyText = isBaseMode ? `${stockQty} ${it.baseUnit}` : `${stockQty} ${it.displayUnit}`;
+            if (!it.locations) it.locations = {};
+            it.locations[recLoc] = roundQty((it.locations[recLoc] || 0) + baseQty);
+            pushStockLog(`📦 進貨入庫：【${it.name}】${LOCATION_DEFS[recLoc]?.name || recLoc} +${qtyText}（叫貨簽收）`,
+                { itemId: it.id, actionType: 'receive', baseQty, toLocation: recLoc, orderId: docId });
+            const newReceived = roundQty(normalizeNumber(fresh.receiveQty, 0) + recvQty);
+            const newStatus = nextReceiveStatus(newReceived, orderTrack(fresh).total);
             const now = new Date().toISOString();
-            let newStatus = 'partial';
-            const ok = await updateOrderTx(docId, fresh => {
-                const newReceived = roundQty(normalizeNumber(fresh.receiveQty, 0) + recvQty);
-                newStatus = nextReceiveStatus(newReceived, orderTrack(fresh).total);
-                return {
+            return {
+                orderPatch: {
                     status: newStatus,
                     receiveQty: newReceived,
                     processedQty: roundQty(normalizeNumber(fresh.processedQty, 0) + stockQty),
                     receivedAt: now,
                     ...(newStatus === 'done' ? { doneAt: now } : {}),
                     ...(dr.entry ? { diffLog: [...(fresh.diffLog || []), dr.entry] } : {})
-                };
-            });
-            success = ok;
-            if (ok) showToast(newStatus === 'done' ? t('rcv_done_toast') : newStatus === 'over' ? t('rcv_over_toast') : t('rcv_partial_toast'));
-        } finally {
-            if (!success) unlockReceiveBtn(btn);
-        }
+                },
+                toast: statusToast(newStatus)
+            };
+        });
+        if (res.ok) showToast(res.toast);
+        else { if (res.error) showToast(res.error); unlockReceiveBtn(btn); }
     };
 
     window.receiveSignOnly = async function(docId) {
@@ -1897,22 +1922,19 @@ const firebaseConfig = {
         if (recvQty <= 0) { showToast(t('enter_qty')); return; }
         const dr = getDiffEntry(o, recvQty);
         if (!dr.ok) return;
-        if (!guardOnline()) return;
         const btn = lockReceiveBtn(docId);
         if (!btn) return;
-        let success = false;
-        try {
-            const ok = await updateOrderTx(docId, fresh => ({
+        const res = await receiveTransaction(docId, false, ({ fresh }) => ({
+            orderPatch: {
                 status: 'processing',
                 receiveQty: roundQty(normalizeNumber(fresh.receiveQty, 0) + recvQty),
                 receivedAt: new Date().toISOString(),
                 ...(dr.entry ? { diffLog: [...(fresh.diffLog || []), dr.entry] } : {})
-            }));
-            success = ok;
-            if (ok) showToast(t('rcv_signed_toast'));
-        } finally {
-            if (!success) unlockReceiveBtn(btn);
-        }
+            },
+            toast: t('rcv_signed_toast')
+        }));
+        if (res.ok) showToast(res.toast);
+        else { if (res.error) showToast(res.error); unlockReceiveBtn(btn); }
     };
 
     window.receiveProcessDone = async function(docId) {
@@ -1922,24 +1944,28 @@ const firebaseConfig = {
         if (stockQty <= 0) { showToast(t('enter_qty')); return; }
         const btn = lockReceiveBtn(docId);
         if (!btn) return;
-        let success = false;
-        try {
-            if (!(await stockInFromOrder(o, stockQty))) return;
+        const res = await receiveTransaction(docId, true, ({ items, fresh, pushStockLog }) => {
+            const it = items.find(i => String(i.id) === String(o.itemId));
+            if (!it) return { error: t('item_not_found') };
+            const recLoc = it.defaultReceiveLocation || 'warehouseFrozen';
+            const baseQty = roundQty(stockQty * (it.basePerDisplay || 1));
+            if (!it.locations) it.locations = {};
+            it.locations[recLoc] = roundQty((it.locations[recLoc] || 0) + baseQty);
+            pushStockLog(`📦 進貨入庫：【${it.name}】${LOCATION_DEFS[recLoc]?.name || recLoc} +${stockQty} ${it.displayUnit}（叫貨簽收）`,
+                { itemId: it.id, actionType: 'receive', baseQty, toLocation: recLoc, orderId: docId });
+            const newStatus = nextReceiveStatus(normalizeNumber(fresh.receiveQty, 0), orderTrack(fresh).total);
             const now = new Date().toISOString();
-            let newStatus = 'partial';
-            const ok = await updateOrderTx(docId, fresh => {
-                newStatus = nextReceiveStatus(normalizeNumber(fresh.receiveQty, 0), orderTrack(fresh).total);
-                return {
+            return {
+                orderPatch: {
                     status: newStatus,
                     processedQty: roundQty(normalizeNumber(fresh.processedQty, 0) + stockQty),
                     ...(newStatus === 'done' ? { doneAt: now } : {})
-                };
-            });
-            success = ok;
-            if (ok) showToast(newStatus === 'done' ? t('rcv_done_toast') : newStatus === 'over' ? t('rcv_over_toast') : t('rcv_partial_toast'));
-        } finally {
-            if (!success) unlockReceiveBtn(btn);
-        }
+                },
+                toast: statusToast(newStatus)
+            };
+        });
+        if (res.ok) showToast(res.toast);
+        else { if (res.error) showToast(res.error); unlockReceiveBtn(btn); }
     };
 
     // ── 銷售回報 ────────────────────────────────────────────────
@@ -2094,7 +2120,7 @@ const firebaseConfig = {
 
     window.verifyCountPin = function() {
         const input = document.getElementById("countPinInput")?.value || "";
-        const pin = settings.countPin || settings.adminPin || "1234";
+        const pin = configPins.countPin || configPins.adminPin || "1234";
         if (input === pin) {
             countUnlocked = true;
             document.getElementById("countPinOverlay").classList.add("hidden");

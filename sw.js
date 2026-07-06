@@ -1,8 +1,15 @@
-const CACHE_NAME = 'tsai-inventory-pwa-v87-20260704';
+const CACHE_NAME = 'tsai-inventory-pwa-v89-20260706';
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.svg', './icon-512.svg'];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
+  // 逐項快取並容錯：單一資源失敗（例如某圖示暫時 404）不影響其他資源與整體安裝
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => Promise.all(APP_SHELL.map(url =>
+        cache.add(url).catch(err => console.warn('SW 快取略過', url, err))
+      )))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', event => {

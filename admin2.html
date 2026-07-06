@@ -204,7 +204,7 @@
 <!-- Admin Panel -->
 <div id="adminPanel">
     <div class="admin-header">
-        <h1>⚙️ 蔡叔叔比薩屋 後場管理後台<span class="app-version">v87</span></h1>
+        <h1>⚙️ 蔡叔叔比薩屋 後場管理後台<span class="app-version">v89</span></h1>
         <div style="display:flex;gap:8px;align-items:center;">
             <div class="sync-status" id="syncStatus"><span class="dot"></span><span id="syncText">同步中…</span></div>
             <a href="index.html" class="btn btn-outline btn-sm">← 員工頁</a>
@@ -856,15 +856,14 @@
     import { doc, collection, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, runTransaction, getDocs, query, where, orderBy, limit as fsLimit, writeBatch, initializeFirestore, memoryLocalCache }
         from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  const firebaseConfig = {
-  apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",
-  authDomain: "inv3-84f00.firebaseapp.com",
-  databaseURL: "https://inv3-84f00-default-rtdb.firebaseio.com",
-  projectId: "inv3-84f00",
-  storageBucket: "inv3-84f00.firebasestorage.app",
-  messagingSenderId: "328169054973",
-  appId: "1:328169054973:web:eac5caf163bf3cf5eed494"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyCUYkvADtC6tM8uENRFNUb7OJlTUcisfFE",
+        authDomain: "caishushu-inventory.firebaseapp.com",
+        projectId: "caishushu-inventory",
+        storageBucket: "caishushu-inventory.firebasestorage.app",
+        messagingSenderId: "228644978060",
+        appId: "1:228644978060:web:ac87081548d5a19305eaa9"
+    };
 
     const app = initializeApp(firebaseConfig);
     // 後台使用純記憶體快取：不參與本地快取主導權仲裁，避免與前台分頁同開時互卡
