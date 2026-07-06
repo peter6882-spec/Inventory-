@@ -204,7 +204,7 @@
 <!-- Admin Panel -->
 <div id="adminPanel">
     <div class="admin-header">
-        <h1>⚙️ 蔡叔叔比薩屋 後場管理後台<span class="app-version">v86</span></h1>
+        <h1>⚙️ 蔡叔叔比薩屋 後場管理後台<span class="app-version">v87</span></h1>
         <div style="display:flex;gap:8px;align-items:center;">
             <div class="sync-status" id="syncStatus"><span class="dot"></span><span id="syncText">同步中…</span></div>
             <a href="index.html" class="btn btn-outline btn-sm">← 員工頁</a>
@@ -259,6 +259,7 @@
     <div id="tab-categories" class="tab-content">
         <div class="section-header">
             <h2>分類管理</h2>
+            <button class="btn btn-outline btn-sm" onclick="exportCategoriesBackup()">⬇ 匯出分類備份</button>
         </div>
         <div class="card-list" id="categoryList"></div>
         <div class="add-row">
@@ -541,6 +542,13 @@
                             <div id="batchImportPreview" style="margin-top:12px;"></div>
                         </div>
                     </details>
+
+                    <div style="border-top:1px solid #eee;margin-top:24px;padding-top:20px;">
+                        <h3 style="font-size:15px;color:#333;margin-bottom:8px;">分類備份匯入</h3>
+                        <p style="font-size:13px;color:#666;margin-bottom:10px;">上傳「分類管理 → 匯出分類備份」的 JSON 檔，還原分類清單與越南語對照（適用網站移轉）。既有分類會保留，同名不重複；越南語翻譯以匯入檔為準覆蓋。</p>
+                        <input type="file" id="catImportFile" accept=".json,application/json" style="display:none;" onchange="importCategoriesBackup(this)">
+                        <button class="btn btn-outline" onclick="document.getElementById('catImportFile').click()">上傳分類備份 JSON</button>
+                    </div>
                 </div>
 
                 <!-- 越南語翻譯 -->
@@ -849,14 +857,13 @@
         from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const firebaseConfig = {
-  apiKey: "AIzaSyD14l_VDz03TCD6AwjGF6Oa5nrEqX1LWIk",
-  authDomain: "inv3-84f00.firebaseapp.com",
-  databaseURL: "https://inv3-84f00-default-rtdb.firebaseio.com",
-  projectId: "inv3-84f00",
-  storageBucket: "inv3-84f00.firebasestorage.app",
-  messagingSenderId: "328169054973",
-  appId: "1:328169054973:web:eac5caf163bf3cf5eed494"
-};
+        apiKey: "AIzaSyCUYkvADtC6tM8uENRFNUb7OJlTUcisfFE",
+        authDomain: "caishushu-inventory.firebaseapp.com",
+        projectId: "caishushu-inventory",
+        storageBucket: "caishushu-inventory.firebasestorage.app",
+        messagingSenderId: "228644978060",
+        appId: "1:228644978060:web:ac87081548d5a19305eaa9"
+    };
 
     const app = initializeApp(firebaseConfig);
     // 後台使用純記憶體快取：不參與本地快取主導權仲裁，避免與前台分頁同開時互卡
@@ -1987,6 +1994,53 @@ ${JSON.stringify(list, null, 2)}
         document.getElementById('batchImportPreview').innerHTML = '';
         document.getElementById('confirmImportBtn').style.display = 'none';
         document.getElementById('cancelImportBtn').style.display = 'none';
+    };
+
+    // 分類備份：匯出分類清單＋越南語對照（供網站移轉）
+    window.exportCategoriesBackup = function() {
+        if (!categories.length) { showToast('尚無分類可匯出'); return; }
+        const trans = {};
+        categories.forEach(c => { if (categoryTranslations[c]) trans[c] = categoryTranslations[c]; });
+        const backup = { type: 'categoriesBackup', categories: [...categories], categoryTranslations: trans };
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `分類備份_${date}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(`✅ 已匯出 ${categories.length} 個分類`);
+    };
+
+    window.importCategoriesBackup = function(input) {
+        const file = input.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async () => {
+            input.value = '';
+            let data;
+            try {
+                data = JSON.parse(String(reader.result || ''));
+            } catch { alert('JSON 格式錯誤，請確認檔案內容'); return; }
+            const impCats = Array.isArray(data.categories) ? data.categories.filter(c => typeof c === 'string' && c.trim()) : [];
+            const impTrans = (data.categoryTranslations && typeof data.categoryTranslations === 'object') ? data.categoryTranslations : {};
+            if (!impCats.length && !Object.keys(impTrans).length) { alert('檔案中沒有可匯入的分類資料'); return; }
+            const merged = [...categories];
+            let added = 0;
+            impCats.forEach(c => { if (!merged.includes(c)) { merged.push(c); added++; } });
+            const mergedTrans = { ...categoryTranslations };
+            let transCount = 0;
+            Object.entries(impTrans).forEach(([k, v]) => { if (typeof v === 'string' && v.trim()) { mergedTrans[k] = v; transCount++; } });
+            if (!confirm(`匯入分類備份？\n\n新增分類：${added} 個（既有 ${categories.length} 個保留）\n越南語對照：更新 ${transCount} 筆\n\n確定要匯入嗎？`)) return;
+            try {
+                await setDoc(settingsRef, { categories: merged, adminPin }, { merge: true });
+                await setDoc(mainRef, { settings: { ...mainSettings, categoryTranslations: mergedTrans } }, { merge: true });
+                showToast(`✅ 已匯入，新增 ${added} 個分類`);
+            } catch (e) { alert('匯入失敗：' + e.message); }
+        };
+        reader.onerror = () => alert('讀取檔案失敗，請再試一次');
+        reader.readAsText(file, 'utf-8');
     };
 
     window.exportItemsBackup = function() {
