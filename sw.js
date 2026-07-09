@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tsai-inventory-pwa-v89-20260706';
+const CACHE_NAME = 'tsai-inventory-pwa-v90-20260706';
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.svg', './icon-512.svg'];
 
 self.addEventListener('install', event => {
@@ -21,13 +21,15 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  // 不攔截跨網域請求（Firebase / CDN），讓資料與 SDK 直接走網路
+  if (url.origin !== location.origin) return;
+  // 網路優先：連線正常一律抓最新程式碼，離線才用快取備援 → 不會再看到舊版
   event.respondWith(
-    caches.match(req).then(cached => cached || fetch(req).then(res => {
+    fetch(req).then(res => {
       const copy = res.clone();
-      if (new URL(req.url).origin === location.origin) {
-        caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-      }
+      caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
       return res;
-    }).catch(() => caches.match('./index.html')))
+    }).catch(() => caches.match(req).then(cached => cached || caches.match('./index.html')))
   );
 });

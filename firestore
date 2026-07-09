@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// 蔡叔叔比薩屋 庫存系統 Firestore 安全規則
+// 蔡叔叔比薩屋 後場管理系統 Firestore 安全規則
 //
 // 防護目標（在「無登入機制」的前提下能做到的最大保護）：
 // 1. 只開放系統實際使用的路徑，其他任何集合/文件一律拒絕
@@ -18,9 +18,11 @@ service cloud.firestore {
     // ── 庫存主檔 ─────────────────────────────────────────
     match /inventory/mainStore {
       allow read: if true;
+      // items 存在時須為清單且不超過 2000 筆；允許只寫 settings 的合併寫入（items 不存在時）
       allow create, update: if
-        request.resource.data.items is list &&
-        request.resource.data.items.size() <= 2000 &&
+        (!('items' in request.resource.data) ||
+          (request.resource.data.items is list &&
+           request.resource.data.items.size() <= 2000)) &&
         (!('settings' in request.resource.data) || request.resource.data.settings is map);
       allow delete: if false;   // 主檔絕不允許整份刪除
 

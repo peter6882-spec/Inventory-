@@ -301,7 +301,7 @@
     <header class="hero">
         <div>
             <h1>🍕 蔡叔叔比薩屋 後場管理系統 </h1>
-            <p class="subtitle">庫存、叫貨、銷售、盤點，一站完成！ <span style="font-size:11px;color:#9ab0a5;">v89</span></p>
+            <p class="subtitle">庫存、叫貨、銷售、盤點，一站完成！ <span style="font-size:11px;color:#9ab0a5;">v90</span></p>
         </div>
         <div class="header-actions">
             <div class="lang-toggle">
@@ -381,7 +381,7 @@
     <div id="countContent" class="hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
             <div>
-                <strong id="countSectionTitle" style="font-size:18px;color:var(--primary-dark);">庫存盤點</strong>
+                <strong id="countSectionTitle" style="font-size:18px;color:var(--primary-dark);">📋 庫存盤點</strong>
                 <div id="countSectionSub" style="font-size:13px;color:#8a9690;margin-top:4px;">輸入各倉位實際數量（顯示單位），確認後寫入系統</div>
                 <div id="lastFullCountInfo" style="font-size:12px;color:#8a9690;margin-top:3px;"></div>
             </div>
@@ -439,23 +439,24 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { doc, collection, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, runTransaction, getDocs, query, where, orderBy, limit as fsLimit, writeBatch, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { doc, collection, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, runTransaction, getDocs, query, where, orderBy, limit as fsLimit, writeBatch, initializeFirestore, memoryLocalCache } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
    
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDIeh7hiuq5CPFd0P_1trM7po9ftriuGk4",
-  authDomain: "inventory-formal.firebaseapp.com",
-  projectId: "inventory-formal",
-  storageBucket: "inventory-formal.firebasestorage.app",
-  messagingSenderId: "88680635291",
-  appId: "1:88680635291:web:f96a6485487e5729d95f3e"
+  apiKey: "AIzaSyCUYkvADtC6tM8uENRFNUb7OJlTUcisfFE",
+  authDomain: "caishushu-inventory.firebaseapp.com",
+  projectId: "caishushu-inventory",
+  storageBucket: "caishushu-inventory.firebasestorage.app",
+  messagingSenderId: "228644978060",
+  appId: "1:228644978060:web:ac87081548d5a19305eaa9"
 };
 
     const app = initializeApp(firebaseConfig);
+    // 純記憶體快取：資料每次從雲端讀取，不落地瀏覽器 IndexedDB，避免各裝置/瀏覽器快取分裂（代價：離線不可用）
     const db = initializeFirestore(app, {
         experimentalAutoDetectLongPolling: true,
-        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        localCache: memoryLocalCache()
     });
     const docRef  = doc(db, "inventory", "mainStore");
     const settingsDocRef = doc(db, "inventory", "settings");   // 分類、adminPin、countPin 的正式儲存位置
